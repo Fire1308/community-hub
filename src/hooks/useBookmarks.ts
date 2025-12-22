@@ -44,7 +44,7 @@ export function useIsBookmarked(threadId: string) {
         .select('id')
         .eq('thread_id', threadId)
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
       
       if (error && error.code !== 'PGRST116') throw error;
       return !!data;
@@ -67,7 +67,7 @@ export function useToggleBookmark() {
         .select('id')
         .eq('thread_id', threadId)
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (existing) {
         // Remove bookmark
