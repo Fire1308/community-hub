@@ -134,32 +134,31 @@ export default function AuthPage() {
     setLoading(true);
 
     try {
-      // Send OTP to email for verification
-      const { error } = await supabase.auth.signInWithOtp({
+      // Direct signup with auto-confirm enabled
+      const { error } = await supabase.auth.signUp({
         email,
+        password,
         options: {
-          shouldCreateUser: false, // Don't create user yet
+          emailRedirectTo: `${window.location.origin}/`,
           data: {
             username,
+            display_name: username,
           }
         }
       });
 
-      if (error && !error.message.includes('already registered')) {
+      if (error) {
+        if (error.message.includes('already registered')) {
+          throw new Error('An account with this email already exists');
+        }
         throw error;
       }
       
-      // Store pending registration data
-      setPendingEmail(email);
-      setPendingUsername(username);
-      setPendingPassword(password);
-      
       toast({
-        title: 'Verification code sent!',
-        description: 'Check your email for the verification code.',
+        title: 'Account created!',
+        description: 'Welcome to the community!',
       });
-      
-      setMode('verify');
+      navigate('/');
     } catch (error: unknown) {
       toast({
         title: 'Sign up failed',

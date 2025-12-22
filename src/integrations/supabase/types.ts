@@ -152,6 +152,51 @@ export type Database = {
           },
         ]
       }
+      festival_settings: {
+        Row: {
+          background_gradient: string | null
+          created_at: string
+          custom_emojis: string[] | null
+          end_date: string | null
+          festival_id: string
+          id: string
+          is_active: boolean | null
+          start_date: string | null
+          subtitle: string | null
+          title: string | null
+          updated_at: string
+          wish_text: string | null
+        }
+        Insert: {
+          background_gradient?: string | null
+          created_at?: string
+          custom_emojis?: string[] | null
+          end_date?: string | null
+          festival_id: string
+          id?: string
+          is_active?: boolean | null
+          start_date?: string | null
+          subtitle?: string | null
+          title?: string | null
+          updated_at?: string
+          wish_text?: string | null
+        }
+        Update: {
+          background_gradient?: string | null
+          created_at?: string
+          custom_emojis?: string[] | null
+          end_date?: string | null
+          festival_id?: string
+          id?: string
+          is_active?: boolean | null
+          start_date?: string | null
+          subtitle?: string | null
+          title?: string | null
+          updated_at?: string
+          wish_text?: string | null
+        }
+        Relationships: []
+      }
       follows: {
         Row: {
           created_at: string

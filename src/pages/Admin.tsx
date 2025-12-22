@@ -3,9 +3,10 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Users, Shield, Flag, BarChart3, FolderOpen, Settings,
   Search, MoreHorizontal, Ban, UserCheck, Trash2, Lock, Unlock,
-  Plus, Edit, AlertTriangle, CheckCircle, XCircle, Eye
+  Plus, Edit, AlertTriangle, CheckCircle, XCircle, Eye, Sparkles
 } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
+import { FestivalCustomizer } from '@/components/admin/FestivalCustomizer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -190,7 +191,7 @@ export default function Admin() {
         </div>
 
         <Tabs value={activeTab} onValueChange={(v) => setSearchParams({ tab: v })}>
-          <TabsList className="grid w-full grid-cols-5 mb-6">
+          <TabsList className="grid w-full grid-cols-6 mb-6">
             <TabsTrigger value="dashboard" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               <span className="hidden sm:inline">Dashboard</span>
@@ -209,6 +210,10 @@ export default function Admin() {
             <TabsTrigger value="categories" className="flex items-center gap-2">
               <FolderOpen className="h-4 w-4" />
               <span className="hidden sm:inline">Categories</span>
+            </TabsTrigger>
+            <TabsTrigger value="festivals" className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4" />
+              <span className="hidden sm:inline">Festivals</span>
             </TabsTrigger>
             <TabsTrigger value="settings" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
@@ -673,6 +678,11 @@ export default function Admin() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+          </TabsContent>
+
+          {/* Festivals Tab */}
+          <TabsContent value="festivals">
+            <FestivalCustomizer />
           </TabsContent>
 
           {/* Settings Tab */}

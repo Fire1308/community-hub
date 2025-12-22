@@ -94,6 +94,23 @@ export default function MessagesPage() {
         });
 
       if (error) throw error;
+
+      // Create notification for recipient
+      const senderProfile = await supabase
+        .from('profiles')
+        .select('username, display_name')
+        .eq('id', user.id)
+        .single();
+
+      if (senderProfile.data) {
+        await supabase.from('notifications').insert({
+          user_id: selectedUserId,
+          type: 'message',
+          title: 'New Message',
+          message: `${senderProfile.data.display_name || senderProfile.data.username} sent you a message`,
+          link: '/messages',
+        });
+      }
     },
     onSuccess: () => {
       setNewMessage('');
