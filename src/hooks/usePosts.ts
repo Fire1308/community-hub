@@ -106,6 +106,7 @@ export function useCreatePost() {
           title: 'New reply to your thread',
           message: `${author?.display_name || author?.username || 'Someone'} replied to "${thread.title}"`,
           link: `/thread/${thread.id}`,
+          is_read: false,
           data: { thread_id: thread.id, post_id: post.id },
         });
       }
@@ -129,6 +130,7 @@ export function useCreatePost() {
                 title: 'You were mentioned',
                 message: `${author?.display_name || author?.username || 'Someone'} mentioned you in a post`,
                 link: `/thread/${input.thread_id}`,
+                is_read: false,
                 data: { thread_id: input.thread_id, post_id: post.id },
               });
             }
@@ -154,6 +156,7 @@ export function useCreatePost() {
               title: 'New reply in followed thread',
               message: `${author?.display_name || author?.username || 'Someone'} replied to "${thread.title}"`,
               link: `/thread/${thread.id}`,
+              is_read: false,
               data: { thread_id: thread.id, post_id: post.id },
             });
           }
