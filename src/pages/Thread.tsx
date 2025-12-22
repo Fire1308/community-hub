@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Pin, Lock, CheckCircle, Bookmark, BookmarkCheck, Share2, MoreHorizontal, Flag, Trash } from 'lucide-react';
+import { Pin, Lock, CheckCircle, Bookmark, BookmarkCheck, Share2, MoreHorizontal, Flag, Trash, Bell, BellOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -32,6 +32,7 @@ import { useThread, useUpdateThread, useDeleteThread } from '@/hooks/useThreads'
 import { usePosts, useCreatePost, useDeletePost } from '@/hooks/usePosts';
 import { useThreadTags } from '@/hooks/useTags';
 import { useIsBookmarked, useToggleBookmark } from '@/hooks/useBookmarks';
+import { useTrackThreadView, useIsFollowingThread, useToggleThreadFollow } from '@/hooks/useThreadFollow';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import type { Post } from '@/lib/supabase-types';
@@ -52,8 +53,13 @@ export default function ThreadPage() {
   const { data: posts = [], isLoading: postsLoading } = usePosts(threadId!);
   const { data: tags = [] } = useThreadTags(threadId!);
   const { data: isBookmarked = false } = useIsBookmarked(threadId!);
+  const { data: isFollowing = false } = useIsFollowingThread(threadId);
+  
+  // Track view count
+  useTrackThreadView(threadId);
   
   const toggleBookmark = useToggleBookmark();
+  const toggleFollow = useToggleThreadFollow();
   const createPost = useCreatePost();
   const updateThread = useUpdateThread();
   const deleteThread = useDeleteThread();
@@ -135,6 +141,12 @@ export default function ThreadPage() {
   const handleReport = (type: 'post' | 'thread', id: string) => {
     setReportTarget({ type, id });
     setReportOpen(true);
+  };
+
+  const handleToggleFollow = async () => {
+    if (!threadId) return;
+    const result = await toggleFollow.mutateAsync(threadId);
+    toast({ title: result.action === 'followed' ? 'Now following this thread' : 'Unfollowed thread' });
   };
 
   const handleShare = () => {
@@ -227,6 +239,18 @@ export default function ThreadPage() {
                 <><BookmarkCheck className="h-4 w-4 mr-1" /> Bookmarked</>
               ) : (
                 <><Bookmark className="h-4 w-4 mr-1" /> Bookmark</>
+              )}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleToggleFollow}
+              disabled={!user}
+            >
+              {isFollowing ? (
+                <><BellOff className="h-4 w-4 mr-1" /> Unfollow</>
+              ) : (
+                <><Bell className="h-4 w-4 mr-1" /> Follow</>
               )}
             </Button>
             <Button variant="outline" size="sm" onClick={handleShare}>

@@ -4,6 +4,8 @@ import { MessageSquare, Eye, Pin, Lock, CheckCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { RoleBadge } from '@/components/ui/role-badge';
+import { useUserRole } from '@/hooks/useUserRoles';
 import type { Thread } from '@/lib/supabase-types';
 
 interface ThreadCardProps {
@@ -11,6 +13,8 @@ interface ThreadCardProps {
 }
 
 export function ThreadCard({ thread }: ThreadCardProps) {
+  const { data: authorRole } = useUserRole(thread.author_id);
+  
   return (
     <Link to={`/thread/${thread.id}`}>
       <Card className="hover:shadow-md transition-shadow cursor-pointer group">
@@ -49,8 +53,9 @@ export function ThreadCard({ thread }: ThreadCardProps) {
 
               {/* Author & Category */}
               <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground mb-2">
-                <span>
+                <span className="flex items-center gap-1.5">
                   by <span className="font-medium text-foreground">{thread.author?.display_name || thread.author?.username}</span>
+                  <RoleBadge role={authorRole} showLabel={false} />
                 </span>
                 {thread.category && (
                   <>
