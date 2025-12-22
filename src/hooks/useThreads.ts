@@ -21,72 +21,98 @@ export function useThreads(options?: {
   return useQuery({
     queryKey: ['threads', { categoryId, authorId, search, filter, limit }],
     queryFn: async () => {
-      let query = supabase
+      const { data: threads, error } = await supabase
         .from('threads')
         .select(`
           *,
-          author:profiles(*),
-          category:categories(*)
+          category:categories(id, name, slug, color, icon)
         `)
-        .limit(limit);
+        .limit(limit)
+        .order(
+          filter === 'trending' ? 'view_count' : 
+          filter === 'unanswered' ? 'created_at' : 'last_activity_at', 
+          { ascending: false }
+        );
 
       if (categoryId) {
-        query = query.eq('category_id', categoryId);
+        const { data: filteredThreads, error: filteredError } = await supabase
+          .from('threads')
+          .select(`*, category:categories(id, name, slug, color, icon)`)
+          .eq('category_id', categoryId)
+          .order('is_pinned', { ascending: false })
+          .order('last_activity_at', { ascending: false })
+          .limit(limit);
+        
+        if (filteredError) throw filteredError;
+        
+        // Fetch authors
+        const authorIds = [...new Set(filteredThreads?.map(t => t.author_id) || [])];
+        const { data: authors } = await supabase
+          .from('profiles')
+          .select('id, username, display_name, avatar_url')
+          .in('id', authorIds);
+
+        return (filteredThreads || []).map(thread => ({
+          ...thread,
+          author: authors?.find(a => a.id === thread.author_id) || null,
+        })) as unknown as Thread[];
       }
 
-      if (authorId) {
-        query = query.eq('author_id', authorId);
-      }
-
-      if (search) {
-        query = query.textSearch('search_vector', search);
-      }
-
-      switch (filter) {
-        case 'trending':
-          query = query.order('view_count', { ascending: false });
-          break;
-        case 'unanswered':
-          query = query.eq('reply_count', 0).order('created_at', { ascending: false });
-          break;
-        default:
-          query = query.order('is_pinned', { ascending: false }).order('last_activity_at', { ascending: false });
-      }
-
-      const { data, error } = await query;
-      
       if (error) throw error;
-      return (data || []) as unknown as Thread[];
+
+      // Fetch authors for all threads
+      const authorIds = [...new Set(threads?.map(t => t.author_id) || [])];
+      const { data: authors } = await supabase
+        .from('profiles')
+        .select('id, username, display_name, avatar_url')
+        .in('id', authorIds);
+
+      return (threads || []).map(thread => ({
+        ...thread,
+        author: authors?.find(a => a.id === thread.author_id) || null,
+      })) as unknown as Thread[];
     },
   });
 }
 
-export function useThread(threadId: string) {
+export function useThread(slugOrId: string) {
   return useQuery({
-    queryKey: ['thread', threadId],
+    queryKey: ['thread', slugOrId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Check if it's a UUID format
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slugOrId);
+      
+      let query = supabase
         .from('threads')
         .select(`
           *,
-          author:profiles(*),
-          category:categories(*)
-        `)
-        .eq('id', threadId)
-        .single();
+          category:categories(id, name, slug, color, icon)
+        `);
+      
+      if (isUUID) {
+        query = query.eq('id', slugOrId);
+      } else {
+        query = query.eq('slug', slugOrId);
+      }
+
+      const { data: thread, error } = await query.maybeSingle();
       
       if (error) throw error;
+      if (!thread) return null;
       
-      // Increment view count
-      supabase
-        .from('threads')
-        .update({ view_count: (data.view_count || 0) + 1 })
-        .eq('id', threadId)
-        .then();
+      // Fetch author profile separately (since author_id references auth.users, not profiles)
+      const { data: author } = await supabase
+        .from('profiles')
+        .select('id, username, display_name, avatar_url, reputation_points')
+        .eq('id', thread.author_id)
+        .maybeSingle();
+
+      // Increment view count in background
+      supabase.rpc('increment_thread_view', { p_thread_id: thread.id }).then();
       
-      return data as unknown as Thread;
+      return { ...thread, author } as unknown as Thread;
     },
-    enabled: !!threadId,
+    enabled: !!slugOrId,
   });
 }
 
