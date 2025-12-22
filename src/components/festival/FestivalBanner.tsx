@@ -1,41 +1,6 @@
-import { useForumTheme, FestivalTheme } from '@/contexts/ForumThemeContext';
+import { useActiveFestival } from '@/hooks/useFestivalSettings';
 
-const festivalMessages: Record<FestivalTheme, { title: string; subtitle: string; wish?: string }> = {
-  none: { title: '', subtitle: '' },
-  christmas: {
-    title: '🎄 Merry Christmas!',
-    subtitle: 'Wishing you joy and happiness this holiday season',
-    wish: 'Season of Sharing & Joy',
-  },
-  'new-year': {
-    title: '🎆 Happy New Year!',
-    subtitle: 'Cheers to new beginnings and fresh starts',
-    wish: 'May this year bring you success!',
-  },
-  halloween: {
-    title: '🎃 Happy Halloween!',
-    subtitle: 'Trick or treat! Have a spooky day',
-    wish: 'Stay spooky! 👻',
-  },
-  thingyan: {
-    title: '💧 သင်္ကြန်မင်္ဂလာပါ!',
-    subtitle: 'နှစ်သစ်မှာ ကံကောင်းပါစေ',
-    wish: 'စိတ်ချမ်းသာ ကိုယ်ကျန်းမာပါစေ 🙏',
-  },
-  thadingyut: {
-    title: '🪔 သီတင်းကျွတ်မင်္ဂလာပါ',
-    subtitle: 'အလင်းရောင်တွေနဲ့ ပျော်ရွှင်ဖွယ်ရာ ပွဲတော်ဖြစ်ပါစေ',
-    wish: 'ဆရာသမားများကို ရှိခိုးကန်တော့ပါ 🙏',
-  },
-  tazaungdaing: {
-    title: '🎈 တန်ဆောင်တိုင်မင်္ဂလာပါ',
-    subtitle: 'ကောင်းကင်ယံမှ မီးပုံးလွှတ်ပွဲ',
-    wish: 'သာယာဝပြောသော ပွဲတော်ဖြစ်ပါစေ 🎊',
-  },
-};
-
-const festivalBackgrounds: Record<FestivalTheme, string> = {
-  none: '',
+const defaultBackgrounds: Record<string, string> = {
   christmas: 'linear-gradient(135deg, hsl(var(--background)), hsl(355 70% 15% / 0.3))',
   'new-year': 'linear-gradient(135deg, hsl(var(--background)), hsl(260 50% 20% / 0.3))',
   halloween: 'linear-gradient(135deg, hsl(var(--background)), hsl(270 50% 10% / 0.5))',
@@ -45,37 +10,41 @@ const festivalBackgrounds: Record<FestivalTheme, string> = {
 };
 
 export function FestivalBanner() {
-  const { festivalTheme } = useForumTheme();
+  const { data: activeFestival, isLoading } = useActiveFestival();
 
-  if (festivalTheme === 'none') return null;
+  if (isLoading || !activeFestival) return null;
 
-  const festival = festivalMessages[festivalTheme];
+  const festivalId = activeFestival.festival_id;
+  const background = activeFestival.background_gradient || defaultBackgrounds[festivalId] || '';
 
   return (
     <div
       className="relative overflow-hidden border-b border-border"
-      style={{ background: festivalBackgrounds[festivalTheme] }}
+      style={{ background }}
     >
       {/* Animated elements based on festival */}
-      {festivalTheme === 'christmas' && <SnowfallEffect />}
-      {festivalTheme === 'new-year' && <FireworksEffect />}
-      {festivalTheme === 'halloween' && <GhostEffect />}
-      {festivalTheme === 'thingyan' && <WaterSplashEffect />}
-      {festivalTheme === 'thadingyut' && <LanternEffect />}
-      {festivalTheme === 'tazaungdaing' && <BalloonEffect />}
+      {festivalId === 'christmas' && <SnowfallEffect emojis={activeFestival.custom_emojis} />}
+      {festivalId === 'new-year' && <FireworksEffect emojis={activeFestival.custom_emojis} />}
+      {festivalId === 'halloween' && <GhostEffect emojis={activeFestival.custom_emojis} />}
+      {festivalId === 'thingyan' && <WaterSplashEffect emojis={activeFestival.custom_emojis} />}
+      {festivalId === 'thadingyut' && <LanternEffect emojis={activeFestival.custom_emojis} />}
+      {festivalId === 'tazaungdaing' && <BalloonEffect emojis={activeFestival.custom_emojis} />}
 
       <div className="container py-6 text-center relative z-10">
-        <h2 className="text-2xl md:text-3xl font-bold mb-2">{festival.title}</h2>
-        <p className="text-muted-foreground">{festival.subtitle}</p>
-        {festival.wish && (
-          <p className="mt-2 text-lg font-medium text-primary">{festival.wish}</p>
+        <h2 className="text-2xl md:text-3xl font-bold mb-2">{activeFestival.title}</h2>
+        <p className="text-muted-foreground">{activeFestival.subtitle}</p>
+        {activeFestival.wish_text && (
+          <p className="mt-2 text-lg font-medium text-primary">{activeFestival.wish_text}</p>
         )}
       </div>
     </div>
   );
 }
 
-function SnowfallEffect() {
+function SnowfallEffect({ emojis }: { emojis?: string[] | null }) {
+  const defaultEmojis = ['❄️', '❄️', '❄️', '⛄'];
+  const emojiList = emojis?.length ? emojis : defaultEmojis;
+  
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
       {[...Array(20)].map((_, i) => (
@@ -89,14 +58,17 @@ function SnowfallEffect() {
             animationDuration: `${2 + Math.random() * 2}s`,
           }}
         >
-          ❄️
+          {emojiList[i % emojiList.length]}
         </div>
       ))}
     </div>
   );
 }
 
-function FireworksEffect() {
+function FireworksEffect({ emojis }: { emojis?: string[] | null }) {
+  const defaultEmojis = ['✨', '🎇', '🎆', '⭐'];
+  const emojiList = emojis?.length ? emojis : defaultEmojis;
+  
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
       {[...Array(8)].map((_, i) => (
@@ -109,14 +81,17 @@ function FireworksEffect() {
             animationDelay: `${Math.random() * 1.5}s`,
           }}
         >
-          {['✨', '🎇', '🎆', '⭐'][i % 4]}
+          {emojiList[i % emojiList.length]}
         </div>
       ))}
     </div>
   );
 }
 
-function GhostEffect() {
+function GhostEffect({ emojis }: { emojis?: string[] | null }) {
+  const defaultEmojis = ['👻', '🎃', '🦇', '🕷️'];
+  const emojiList = emojis?.length ? emojis : defaultEmojis;
+  
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
       {[...Array(6)].map((_, i) => (
@@ -129,14 +104,17 @@ function GhostEffect() {
             animationDelay: `${Math.random() * 2}s`,
           }}
         >
-          {['👻', '🎃', '🦇', '🕷️'][i % 4]}
+          {emojiList[i % emojiList.length]}
         </div>
       ))}
     </div>
   );
 }
 
-function WaterSplashEffect() {
+function WaterSplashEffect({ emojis }: { emojis?: string[] | null }) {
+  const defaultEmojis = ['💧', '💦', '🌊', '🌸'];
+  const emojiList = emojis?.length ? emojis : defaultEmojis;
+  
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
       {[...Array(15)].map((_, i) => (
@@ -149,14 +127,17 @@ function WaterSplashEffect() {
             animationDelay: `${Math.random() * 1.5}s`,
           }}
         >
-          {['💧', '💦', '🌊', '🌸'][i % 4]}
+          {emojiList[i % emojiList.length]}
         </div>
       ))}
     </div>
   );
 }
 
-function LanternEffect() {
+function LanternEffect({ emojis }: { emojis?: string[] | null }) {
+  const defaultEmojis = ['🪔', '✨', '🕯️', '💡'];
+  const emojiList = emojis?.length ? emojis : defaultEmojis;
+  
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
       {[...Array(10)].map((_, i) => (
@@ -169,14 +150,17 @@ function LanternEffect() {
             animationDelay: `${Math.random() * 2}s`,
           }}
         >
-          {['🪔', '✨', '🕯️', '💡'][i % 4]}
+          {emojiList[i % emojiList.length]}
         </div>
       ))}
     </div>
   );
 }
 
-function BalloonEffect() {
+function BalloonEffect({ emojis }: { emojis?: string[] | null }) {
+  const defaultEmojis = ['🎈', '🎊', '🔥', '🎉'];
+  const emojiList = emojis?.length ? emojis : defaultEmojis;
+  
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden">
       {[...Array(8)].map((_, i) => (
@@ -190,7 +174,7 @@ function BalloonEffect() {
             animationDuration: `${3 + Math.random() * 2}s`,
           }}
         >
-          {['🎈', '🎊', '🔥', '🎉'][i % 4]}
+          {emojiList[i % emojiList.length]}
         </div>
       ))}
     </div>
