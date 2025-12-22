@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { MessageCircle, Send, X, AlertTriangle, Smile } from 'lucide-react';
+import { MessageCircle, Send, X, AlertTriangle, Smile, ChevronUp, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -8,7 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGlobalChat, useBanStatus } from '@/hooks/useGlobalChat';
+import { useTypingIndicator, usePrefetchReactions, REACTION_TYPES } from '@/hooks/useChatFeatures';
 import { formatDistanceToNow } from 'date-fns';
+import { MessageReactions } from './MessageReactions';
 
 const EMOJI_LIST = ['😀', '😂', '😍', '🥰', '😎', '🤔', '👍', '👎', '❤️', '🔥', '💯', '🎉', '🙏', '💪', '✨', '😢', '😮', '🤣', '😊', '🥺', '👀', '💀', '🤝', '👏'];
 
@@ -17,17 +19,41 @@ export function GlobalChat() {
   const [message, setMessage] = useState('');
   const [showEmojis, setShowEmojis] = useState(false);
   const { user } = useAuth();
-  const { messages, isLoading, sendMessage } = useGlobalChat();
+  const { 
+    messages, 
+    isLoading, 
+    sendMessage, 
+    hasNextPage, 
+    fetchNextPage, 
+    isFetchingNextPage,
+    shouldScrollToBottom,
+    setShouldScrollToBottom,
+  } = useGlobalChat();
   const { data: banStatus } = useBanStatus();
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const { typingUsers, setTyping, stopTyping } = useTypingIndicator('global');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Prefetch reactions for visible messages
+  usePrefetchReactions(
+    messages.map(m => m.id).filter(id => !id.startsWith('temp-')),
+    'global'
+  );
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
-    if (isOpen && messagesEndRef.current) {
+    if (isOpen && shouldScrollToBottom && messagesEndRef.current) {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      setShouldScrollToBottom(false);
     }
-  }, [messages, isOpen]);
+  }, [messages, isOpen, shouldScrollToBottom, setShouldScrollToBottom]);
+
+  // Handle typing
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setMessage(e.target.value);
+    if (e.target.value) {
+      setTyping();
+    }
+  };
 
   if (!user) return null;
 
@@ -58,6 +84,8 @@ export function GlobalChat() {
     sendMessage.mutate(message);
     setMessage('');
     setShowEmojis(false);
+    stopTyping();
+    setShouldScrollToBottom(true);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -69,6 +97,12 @@ export function GlobalChat() {
 
   const addEmoji = (emoji: string) => {
     setMessage(prev => prev + emoji);
+  };
+
+  const loadMore = () => {
+    if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
+    }
   };
 
   return (
@@ -97,11 +131,31 @@ export function GlobalChat() {
           </CardHeader>
 
           <CardContent className="p-0">
-            <ScrollArea className="h-[400px]" ref={scrollAreaRef}>
+            <ScrollArea className="h-[400px]">
               <div className="p-4">
+                {/* Load More Button */}
+                {hasNextPage && (
+                  <div className="text-center mb-4">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={loadMore}
+                      disabled={isFetchingNextPage}
+                      className="gap-2"
+                    >
+                      {isFetchingNextPage ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <ChevronUp className="h-4 w-4" />
+                      )}
+                      Load earlier
+                    </Button>
+                  </div>
+                )}
+
                 {isLoading ? (
                   <div className="flex items-center justify-center h-full py-20">
-                    <div className="animate-pulse text-muted-foreground">Loading...</div>
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                   </div>
                 ) : messages.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full py-20 text-muted-foreground text-sm">
@@ -114,7 +168,7 @@ export function GlobalChat() {
                     {messages.map((msg) => {
                       const isMe = msg.user_id === user.id;
                       return (
-                        <div key={msg.id} className={`flex gap-2 ${isMe ? 'flex-row-reverse' : ''}`}>
+                        <div key={msg.id} className={`flex gap-2 ${isMe ? 'flex-row-reverse' : ''} group`}>
                           <Avatar className="h-8 w-8 flex-shrink-0 ring-2 ring-background">
                             <AvatarImage src={msg.profiles?.avatar_url || undefined} />
                             <AvatarFallback className="text-xs bg-primary/10">
@@ -139,11 +193,36 @@ export function GlobalChat() {
                             >
                               {msg.message}
                             </div>
+                            {/* Reactions */}
+                            {!msg.id.startsWith('temp-') && (
+                              <MessageReactions 
+                                messageId={msg.id} 
+                                chatType="global" 
+                                isOwn={isMe}
+                              />
+                            )}
                           </div>
                         </div>
                       );
                     })}
                     <div ref={messagesEndRef} />
+                  </div>
+                )}
+
+                {/* Typing Indicator */}
+                {typingUsers.length > 0 && (
+                  <div className="flex items-center gap-2 mt-3 text-sm text-muted-foreground animate-pulse">
+                    <div className="flex gap-1">
+                      <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
+                    <span className="text-xs">
+                      {typingUsers.length === 1 
+                        ? `${typingUsers[0].display_name || typingUsers[0].username} is typing...`
+                        : `${typingUsers.length} people are typing...`
+                      }
+                    </span>
                   </div>
                 )}
               </div>
@@ -174,7 +253,7 @@ export function GlobalChat() {
 
                 <Input
                   value={message}
-                  onChange={(e) => setMessage(e.target.value)}
+                  onChange={handleInputChange}
                   onKeyDown={handleKeyPress}
                   placeholder="Type a message..."
                   className="flex-1 rounded-full bg-background"
