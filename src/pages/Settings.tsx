@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { User, Bell, Shield, Palette, Save, Trash2, Upload, Eye, EyeOff, ArrowLeft, ChevronRight, Lock, Mail, Clock } from 'lucide-react';
+import { User, Bell, Shield, Palette, Save, Trash2, Upload, Eye, EyeOff, ArrowLeft, ChevronRight, Lock, Mail, Clock, Sparkles } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,8 @@ import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,22 +34,26 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useForumTheme, forumThemes, festivalThemes } from '@/contexts/ForumThemeContext';
 import { useNotificationSettings, useUpdateNotificationSettings, useUpdateProfile, useUpdatePassword, useDeleteAccount } from '@/hooks/useSettings';
 import { useFileUpload } from '@/hooks/useFileUpload';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
+import { Check } from 'lucide-react';
 
 const settingsSections = [
   { id: 'profile', label: 'Profile', icon: User, description: 'Your public information' },
   { id: 'notifications', label: 'Notifications', icon: Bell, description: 'Notification preferences' },
-  { id: 'appearance', label: 'Appearance', icon: Palette, description: 'Theme settings' },
+  { id: 'appearance', label: 'Appearance', icon: Palette, description: 'Light/Dark mode' },
+  { id: 'forum-style', label: 'Forum Style', icon: Sparkles, description: 'UI themes & festivals' },
   { id: 'security', label: 'Security', icon: Shield, description: 'Password & account' },
 ];
 
 export default function Settings() {
   const { user, profile, signOut } = useAuth();
   const { theme, setTheme } = useTheme();
+  const { forumTheme, setForumTheme, festivalTheme, setFestivalTheme } = useForumTheme();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -411,11 +417,11 @@ export default function Settings() {
           <Card>
             <CardHeader>
               <CardTitle>Appearance</CardTitle>
-              <CardDescription>Customize how the forum looks</CardDescription>
+              <CardDescription>Choose light or dark mode</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div>
-                <h4 className="font-medium mb-4">Theme</h4>
+                <h4 className="font-medium mb-4">Theme Mode</h4>
                 <div className="grid grid-cols-2 gap-4">
                   <Button
                     variant={theme === 'light' ? 'default' : 'outline'}
@@ -441,6 +447,93 @@ export default function Settings() {
               </div>
             </CardContent>
           </Card>
+        );
+
+      case 'forum-style':
+        return (
+          <div className="space-y-6">
+            {/* Forum UI Themes */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Forum Style</CardTitle>
+                <CardDescription>Choose how the forum looks and feels (15 unique styles)</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ScrollArea className="h-[400px] pr-4">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {forumThemes.map((themeOption) => {
+                      const isActive = forumTheme === themeOption.id;
+                      return (
+                        <button
+                          key={themeOption.id}
+                          onClick={() => setForumTheme(themeOption.id)}
+                          className={cn(
+                            "relative flex flex-col items-start p-3 rounded-lg border-2 transition-all text-left",
+                            isActive
+                              ? "border-primary bg-primary/5"
+                              : "border-border hover:border-primary/50 hover:bg-muted/50"
+                          )}
+                        >
+                          {/* Preview */}
+                          <div className={cn("w-full h-12 rounded-md mb-2", themeOption.preview)} />
+                          <p className="font-medium text-sm">{themeOption.name}</p>
+                          <p className="text-xs text-muted-foreground line-clamp-1">{themeOption.description}</p>
+                          {isActive && (
+                            <div className="absolute top-2 right-2 bg-primary text-primary-foreground rounded-full p-1">
+                              <Check className="h-3 w-3" />
+                            </div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
+              </CardContent>
+            </Card>
+
+            <Separator />
+
+            {/* Festival / Seasonal Themes */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Festival Theme</CardTitle>
+                <CardDescription>Add seasonal decorations and animations (🇲🇲 Myanmar festivals included)</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {festivalThemes.map((festival) => {
+                    const isActive = festivalTheme === festival.id;
+                    return (
+                      <button
+                        key={festival.id}
+                        onClick={() => setFestivalTheme(festival.id)}
+                        className={cn(
+                          "relative flex flex-col items-center p-4 rounded-lg border-2 transition-all",
+                          isActive
+                            ? "border-primary bg-primary/5"
+                            : "border-border hover:border-primary/50 hover:bg-muted/50"
+                        )}
+                      >
+                        <span className="text-3xl mb-2">{festival.emoji}</span>
+                        <p className="font-medium text-sm">{festival.name}</p>
+                        {festival.nameMM && (
+                          <Badge variant="secondary" className="mt-1 text-xs">
+                            {festival.nameMM}
+                          </Badge>
+                        )}
+                        <p className="text-xs text-muted-foreground text-center mt-1 line-clamp-1">{festival.description}</p>
+                        {isActive && (
+                          <div className="absolute top-2 right-2 bg-primary text-primary-foreground rounded-full p-1">
+                            <Check className="h-3 w-3" />
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         );
 
       case 'security':
