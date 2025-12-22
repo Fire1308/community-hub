@@ -1,8 +1,8 @@
-import { Check, Palette, PartyPopper, Grid3X3, Sparkles } from 'lucide-react';
+import { useState } from 'react';
+import { Check, Palette, PartyPopper, Grid3X3, Sparkles, Save, Loader2, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Badge } from '@/components/ui/badge';
 import {
   Sheet,
   SheetContent,
@@ -13,6 +13,10 @@ import {
 } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useForumTheme, forumThemes, festivalThemes, ForumTheme, FestivalTheme } from '@/contexts/ForumThemeContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useUpdateSystemSetting } from '@/hooks/useSystemSettings';
+import { useToast } from '@/hooks/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
 
 const themeCategories = {
   minimal: ['default', 'minimal-editorial', 'nature-calm', 'corporate'],
@@ -22,12 +26,60 @@ const themeCategories = {
 };
 
 export function ThemeSwitcher() {
-  const { forumTheme, setForumTheme, festivalTheme, setFestivalTheme } = useForumTheme();
+  const { forumTheme, festivalTheme } = useForumTheme();
+  const { role, user } = useAuth();
+  const { toast } = useToast();
+  const updateSetting = useUpdateSystemSetting();
+  const queryClient = useQueryClient();
+  
+  const [selectedForumTheme, setSelectedForumTheme] = useState<ForumTheme>(forumTheme);
+  const [selectedFestivalTheme, setSelectedFestivalTheme] = useState<FestivalTheme>(festivalTheme);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const isAdmin = role === 'admin' || role === 'moderator';
+  const hasChanges = selectedForumTheme !== forumTheme || selectedFestivalTheme !== festivalTheme;
+
+  const handleSave = async () => {
+    if (!isAdmin) {
+      toast({
+        title: 'Permission Denied',
+        description: 'Only admins can save global theme settings.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      if (selectedForumTheme !== forumTheme) {
+        await updateSetting.mutateAsync({ key: 'forum_theme', value: selectedForumTheme });
+      }
+      if (selectedFestivalTheme !== festivalTheme) {
+        await updateSetting.mutateAsync({ key: 'festival_theme', value: selectedFestivalTheme });
+      }
+      
+      // Invalidate to refresh theme across the app
+      queryClient.invalidateQueries({ queryKey: ['global-theme-settings'] });
+      
+      toast({
+        title: 'Theme Saved',
+        description: 'Global theme has been updated for all users.',
+      });
+    } catch (error) {
+      toast({
+        title: 'Save Failed',
+        description: error instanceof Error ? error.message : 'Failed to save theme',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button variant="outline" size="icon" className="fixed bottom-4 right-4 z-50 h-12 w-12 rounded-full shadow-lg hover:scale-105 transition-transform">
+        <Button variant="outline" size="icon" className="fixed bottom-20 right-4 z-50 h-12 w-12 rounded-full shadow-lg hover:scale-105 transition-transform">
           <Palette className="h-5 w-5" />
         </Button>
       </SheetTrigger>
@@ -36,8 +88,18 @@ export function ThemeSwitcher() {
           <SheetTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5" />
             Theme Customizer
+            {!isAdmin && (
+              <span className="text-xs font-normal text-muted-foreground flex items-center gap-1">
+                <Lock className="h-3 w-3" />
+                View Only
+              </span>
+            )}
           </SheetTitle>
-          <SheetDescription>Choose your forum style and seasonal decorations</SheetDescription>
+          <SheetDescription>
+            {isAdmin 
+              ? 'Customize the forum appearance for all users' 
+              : 'Only admins can change global theme settings'}
+          </SheetDescription>
         </SheetHeader>
 
         <Tabs defaultValue="style" className="mt-6">
@@ -53,7 +115,7 @@ export function ThemeSwitcher() {
           </TabsList>
 
           <TabsContent value="style" className="mt-4">
-            <ScrollArea className="h-[65vh]">
+            <ScrollArea className="h-[55vh]">
               <div className="space-y-6 pr-4">
                 {/* Light/Minimal Themes */}
                 <div>
@@ -66,8 +128,10 @@ export function ThemeSwitcher() {
                       <ThemeCard
                         key={theme.id}
                         theme={theme}
-                        isSelected={forumTheme === theme.id}
-                        onClick={() => setForumTheme(theme.id)}
+                        isSelected={selectedForumTheme === theme.id}
+                        isCurrent={forumTheme === theme.id}
+                        onClick={() => isAdmin && setSelectedForumTheme(theme.id)}
+                        disabled={!isAdmin}
                       />
                     ))}
                   </div>
@@ -84,8 +148,10 @@ export function ThemeSwitcher() {
                       <ThemeCard
                         key={theme.id}
                         theme={theme}
-                        isSelected={forumTheme === theme.id}
-                        onClick={() => setForumTheme(theme.id)}
+                        isSelected={selectedForumTheme === theme.id}
+                        isCurrent={forumTheme === theme.id}
+                        onClick={() => isAdmin && setSelectedForumTheme(theme.id)}
+                        disabled={!isAdmin}
                       />
                     ))}
                   </div>
@@ -102,8 +168,10 @@ export function ThemeSwitcher() {
                       <ThemeCard
                         key={theme.id}
                         theme={theme}
-                        isSelected={forumTheme === theme.id}
-                        onClick={() => setForumTheme(theme.id)}
+                        isSelected={selectedForumTheme === theme.id}
+                        isCurrent={forumTheme === theme.id}
+                        onClick={() => isAdmin && setSelectedForumTheme(theme.id)}
+                        disabled={!isAdmin}
                       />
                     ))}
                   </div>
@@ -120,8 +188,10 @@ export function ThemeSwitcher() {
                       <ThemeCard
                         key={theme.id}
                         theme={theme}
-                        isSelected={forumTheme === theme.id}
-                        onClick={() => setForumTheme(theme.id)}
+                        isSelected={selectedForumTheme === theme.id}
+                        isCurrent={forumTheme === theme.id}
+                        onClick={() => isAdmin && setSelectedForumTheme(theme.id)}
+                        disabled={!isAdmin}
                       />
                     ))}
                   </div>
@@ -131,7 +201,7 @@ export function ThemeSwitcher() {
           </TabsContent>
 
           <TabsContent value="festival" className="mt-4">
-            <ScrollArea className="h-[65vh]">
+            <ScrollArea className="h-[55vh]">
               <div className="space-y-6 pr-4">
                 {/* Global Festivals */}
                 <div>
@@ -141,8 +211,10 @@ export function ThemeSwitcher() {
                       <FestivalCard
                         key={festival.id}
                         festival={festival}
-                        isSelected={festivalTheme === festival.id}
-                        onClick={() => setFestivalTheme(festival.id)}
+                        isSelected={selectedFestivalTheme === festival.id}
+                        isCurrent={festivalTheme === festival.id}
+                        onClick={() => isAdmin && setSelectedFestivalTheme(festival.id)}
+                        disabled={!isAdmin}
                       />
                     ))}
                   </div>
@@ -156,8 +228,10 @@ export function ThemeSwitcher() {
                       <FestivalCard
                         key={festival.id}
                         festival={festival}
-                        isSelected={festivalTheme === festival.id}
-                        onClick={() => setFestivalTheme(festival.id)}
+                        isSelected={selectedFestivalTheme === festival.id}
+                        isCurrent={festivalTheme === festival.id}
+                        onClick={() => isAdmin && setSelectedFestivalTheme(festival.id)}
+                        disabled={!isAdmin}
                       />
                     ))}
                   </div>
@@ -166,6 +240,32 @@ export function ThemeSwitcher() {
             </ScrollArea>
           </TabsContent>
         </Tabs>
+
+        {/* Save Button - Only visible for admins with changes */}
+        {isAdmin && hasChanges && (
+          <div className="mt-4 pt-4 border-t">
+            <Button 
+              onClick={handleSave} 
+              className="w-full" 
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Save Global Theme
+                </>
+              )}
+            </Button>
+            <p className="text-xs text-muted-foreground text-center mt-2">
+              This will apply the theme to all users
+            </p>
+          </div>
+        )}
       </SheetContent>
     </Sheet>
   );
@@ -174,17 +274,21 @@ export function ThemeSwitcher() {
 function ThemeCard({
   theme,
   isSelected,
+  isCurrent,
   onClick,
+  disabled,
 }: {
   theme: { id: ForumTheme; name: string; description: string };
   isSelected: boolean;
+  isCurrent: boolean;
   onClick: () => void;
+  disabled: boolean;
 }) {
   return (
     <Card
-      className={`cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 ${
-        isSelected ? 'ring-2 ring-primary shadow-md' : ''
-      }`}
+      className={`transition-all ${
+        disabled ? 'cursor-default opacity-70' : 'cursor-pointer hover:shadow-md hover:-translate-y-0.5'
+      } ${isSelected ? 'ring-2 ring-primary shadow-md' : ''}`}
       onClick={onClick}
     >
       <CardContent className="p-3">
@@ -193,7 +297,12 @@ function ThemeCard({
             <ThemePreview theme={theme.id} />
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium truncate">{theme.name}</span>
+            <div className="flex items-center gap-1">
+              <span className="text-xs font-medium truncate">{theme.name}</span>
+              {isCurrent && (
+                <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded">Active</span>
+              )}
+            </div>
             {isSelected && <Check className="h-3.5 w-3.5 text-primary flex-shrink-0" />}
           </div>
         </div>
@@ -205,17 +314,21 @@ function ThemeCard({
 function FestivalCard({
   festival,
   isSelected,
+  isCurrent,
   onClick,
+  disabled,
 }: {
   festival: { id: FestivalTheme; name: string; description: string; emoji: string; nameMM?: string };
   isSelected: boolean;
+  isCurrent: boolean;
   onClick: () => void;
+  disabled: boolean;
 }) {
   return (
     <Card
-      className={`cursor-pointer transition-all hover:shadow-md ${
-        isSelected ? 'ring-2 ring-primary' : ''
-      }`}
+      className={`transition-all ${
+        disabled ? 'cursor-default opacity-70' : 'cursor-pointer hover:shadow-md'
+      } ${isSelected ? 'ring-2 ring-primary' : ''}`}
       onClick={onClick}
     >
       <CardContent className="p-4">
@@ -228,7 +341,12 @@ function FestivalCard({
               <div className="flex items-center gap-2">
                 <span className="text-2xl">{festival.emoji}</span>
                 <div>
-                  <p className="font-medium">{festival.name}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium">{festival.name}</p>
+                    {isCurrent && (
+                      <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded">Active</span>
+                    )}
+                  </div>
                   {festival.nameMM && (
                     <p className="text-xs text-muted-foreground">{festival.nameMM}</p>
                   )}
@@ -268,22 +386,18 @@ function ThemePreview({ theme }: { theme: ForumTheme }) {
 
   return (
     <div className={`w-full h-full ${style.bg} p-2 flex flex-col gap-1`}>
-      {/* Header bar */}
       <div className="flex items-center gap-1">
         <div className={`h-1.5 w-6 ${style.accent} rounded-sm`} />
         <div className="flex-1" />
         <div className={`h-1.5 w-1.5 ${style.text} rounded-full opacity-50`} />
         <div className={`h-1.5 w-1.5 ${style.text} rounded-full opacity-50`} />
       </div>
-      {/* Content area */}
       <div className="flex gap-1 flex-1">
-        {/* Sidebar */}
         <div className={`w-4 ${style.card} rounded-sm p-0.5 space-y-0.5`}>
           <div className={`h-1 w-full ${style.text} rounded-sm opacity-30`} />
           <div className={`h-1 w-full ${style.accent} rounded-sm opacity-60`} />
           <div className={`h-1 w-full ${style.text} rounded-sm opacity-30`} />
         </div>
-        {/* Main content */}
         <div className="flex-1 space-y-1">
           <div className={`h-5 ${style.card} rounded-sm p-1`}>
             <div className={`h-1 w-8 ${style.accent} rounded-sm`} />
