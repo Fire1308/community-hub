@@ -8,9 +8,11 @@ interface CreatePostInput {
   parent_post_id?: string;
 }
 
-export function usePosts(threadId: string) {
+export function usePosts(threadId: string, options?: { limit?: number; offset?: number }) {
+  const { limit = 20, offset = 0 } = options || {};
+  
   return useQuery({
-    queryKey: ['posts', threadId],
+    queryKey: ['posts', threadId, limit, offset],
     queryFn: async () => {
       // First get the thread ID if we have a slug
       let actualThreadId = threadId;
@@ -22,18 +24,25 @@ export function usePosts(threadId: string) {
           .select('id')
           .eq('slug', threadId)
           .maybeSingle();
-        if (!thread) return [];
+        if (!thread) return { posts: [], total: 0 };
         actualThreadId = thread.id;
       }
+
+      // Get total count
+      const { count } = await supabase
+        .from('posts')
+        .select('*', { count: 'exact', head: true })
+        .eq('thread_id', actualThreadId);
 
       const { data: posts, error } = await supabase
         .from('posts')
         .select('*')
         .eq('thread_id', actualThreadId)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: true })
+        .range(offset, offset + limit - 1);
       
       if (error) throw error;
-      if (!posts || posts.length === 0) return [];
+      if (!posts || posts.length === 0) return { posts: [], total: count || 0 };
 
       // Fetch authors separately
       const authorIds = [...new Set(posts.map(p => p.author_id))];
@@ -42,10 +51,12 @@ export function usePosts(threadId: string) {
         .select('id, username, display_name, avatar_url, reputation_points')
         .in('id', authorIds);
 
-      return posts.map(post => ({
+      const postsWithAuthors = posts.map(post => ({
         ...post,
         author: authors?.find(a => a.id === post.author_id) || null,
       })) as unknown as Post[];
+
+      return { posts: postsWithAuthors, total: count || 0 };
     },
     enabled: !!threadId,
   });
