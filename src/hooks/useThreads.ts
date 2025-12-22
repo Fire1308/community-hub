@@ -15,62 +15,58 @@ export function useThreads(options?: {
   search?: string;
   filter?: 'latest' | 'trending' | 'unanswered';
   limit?: number;
+  offset?: number;
 }) {
-  const { categoryId, authorId, search, filter = 'latest', limit = 20 } = options || {};
+  const { categoryId, authorId, search, filter = 'latest', limit = 10, offset = 0 } = options || {};
 
   return useQuery({
-    queryKey: ['threads', { categoryId, authorId, search, filter, limit }],
+    queryKey: ['threads', { categoryId, authorId, search, filter, limit, offset }],
     queryFn: async () => {
-      const { data: threads, error } = await supabase
+      let query = supabase
         .from('threads')
         .select(`
           *,
           category:categories(id, name, slug, color, icon)
-        `)
-        .limit(limit)
-        .order(
+        `, { count: 'exact' });
+
+      if (categoryId) {
+        query = query.eq('category_id', categoryId)
+          .order('is_pinned', { ascending: false })
+          .order('last_activity_at', { ascending: false });
+      } else {
+        query = query.order(
           filter === 'trending' ? 'view_count' : 
           filter === 'unanswered' ? 'created_at' : 'last_activity_at', 
           { ascending: false }
         );
-
-      if (categoryId) {
-        const { data: filteredThreads, error: filteredError } = await supabase
-          .from('threads')
-          .select(`*, category:categories(id, name, slug, color, icon)`)
-          .eq('category_id', categoryId)
-          .order('is_pinned', { ascending: false })
-          .order('last_activity_at', { ascending: false })
-          .limit(limit);
-        
-        if (filteredError) throw filteredError;
-        
-        // Fetch authors
-        const authorIds = [...new Set(filteredThreads?.map(t => t.author_id) || [])];
-        const { data: authors } = await supabase
-          .from('profiles')
-          .select('id, username, display_name, avatar_url')
-          .in('id', authorIds);
-
-        return (filteredThreads || []).map(thread => ({
-          ...thread,
-          author: authors?.find(a => a.id === thread.author_id) || null,
-        })) as unknown as Thread[];
       }
+
+      if (filter === 'unanswered') {
+        query = query.eq('reply_count', 0);
+      }
+
+      query = query.range(offset, offset + limit - 1);
+
+      const { data: threads, error, count } = await query;
 
       if (error) throw error;
 
-      // Fetch authors for all threads
+      // Fetch authors
       const authorIds = [...new Set(threads?.map(t => t.author_id) || [])];
       const { data: authors } = await supabase
         .from('profiles')
         .select('id, username, display_name, avatar_url')
         .in('id', authorIds);
 
-      return (threads || []).map(thread => ({
+      const threadsWithAuthors = (threads || []).map(thread => ({
         ...thread,
         author: authors?.find(a => a.id === thread.author_id) || null,
       })) as unknown as Thread[];
+
+      return {
+        threads: threadsWithAuthors,
+        total: count || 0,
+      };
     },
   });
 }

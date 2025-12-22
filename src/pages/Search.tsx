@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { Search as SearchIcon, Filter } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Search as SearchIcon } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Layout } from '@/components/layout/Layout';
 import { ThreadCard } from '@/components/forum/ThreadCard';
+import { PaginationControls } from '@/components/ui/pagination-controls';
 import { useSearch } from '@/hooks/useSearch';
+
+const PAGE_SIZE = 10;
 
 export default function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -16,10 +18,12 @@ export default function SearchPage() {
   const [query, setQuery] = useState(initialQuery);
   const [debouncedQuery, setDebouncedQuery] = useState(initialQuery);
   const [searchType, setSearchType] = useState<'all' | 'threads' | 'posts' | 'users'>('all');
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedQuery(query);
+      setPage(1); // Reset page on new search
       if (query) {
         setSearchParams({ q: query });
       }
@@ -29,6 +33,14 @@ export default function SearchPage() {
   }, [query, setSearchParams]);
 
   const { data: results, isLoading } = useSearch(debouncedQuery, { type: searchType });
+
+  // Paginate results client-side
+  const paginatedThreads = results?.threads?.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE) || [];
+  const paginatedPosts = results?.posts?.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE) || [];
+  const paginatedUsers = results?.users?.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE) || [];
+  
+  const totalItems = (results?.threads?.length || 0) + (results?.posts?.length || 0) + (results?.users?.length || 0);
+  const totalPages = Math.ceil(totalItems / PAGE_SIZE);
 
   return (
     <Layout>
@@ -49,7 +61,7 @@ export default function SearchPage() {
         </div>
 
         {/* Filters */}
-        <Tabs value={searchType} onValueChange={(v) => setSearchType(v as typeof searchType)} className="mb-6">
+        <Tabs value={searchType} onValueChange={(v) => { setSearchType(v as typeof searchType); setPage(1); }} className="mb-6">
           <TabsList>
             <TabsTrigger value="all">All</TabsTrigger>
             <TabsTrigger value="threads">Threads</TabsTrigger>
@@ -81,7 +93,7 @@ export default function SearchPage() {
               <div>
                 <h2 className="text-xl font-semibold mb-4">Threads ({results.threads.length})</h2>
                 <div className="space-y-4">
-                  {results.threads.map(thread => (
+                  {paginatedThreads.map(thread => (
                     <ThreadCard key={thread.id} thread={thread} />
                   ))}
                 </div>
@@ -93,7 +105,7 @@ export default function SearchPage() {
               <div>
                 <h2 className="text-xl font-semibold mb-4">Posts ({results.posts.length})</h2>
                 <div className="space-y-4">
-                  {results.posts.map(post => (
+                  {paginatedPosts.map(post => (
                     <Card key={post.id}>
                       <CardContent className="p-4">
                         <Link to={`/thread/${post.thread_id}`} className="block">
@@ -118,7 +130,7 @@ export default function SearchPage() {
               <div>
                 <h2 className="text-xl font-semibold mb-4">Users ({results.users.length})</h2>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                  {results.users.map(user => (
+                  {paginatedUsers.map(user => (
                     <Link key={user.id} to={`/profile/${user.username}`}>
                       <Card className="hover:shadow-md transition-shadow">
                         <CardContent className="p-4 flex items-center gap-3">
@@ -136,6 +148,16 @@ export default function SearchPage() {
                   ))}
                 </div>
               </div>
+            )}
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <PaginationControls
+                currentPage={page}
+                totalPages={totalPages}
+                onPageChange={setPage}
+                className="mt-6"
+              />
             )}
 
             {/* No Results */}

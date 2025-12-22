@@ -26,24 +26,39 @@ export function useGlobalChat() {
   const messagesQuery = useInfiniteQuery({
     queryKey: ['global-chat'],
     queryFn: async ({ pageParam = 0 }) => {
-      const { data, error } = await supabase
+      // Fetch messages first
+      const { data: messagesData, error } = await supabase
         .from('global_chat')
-        .select(`
-          *,
-          profiles:user_id (
-            username,
-            display_name,
-            avatar_url
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false })
         .range(pageParam, pageParam + MESSAGES_PER_PAGE - 1);
 
       if (error) throw error;
       
+      if (!messagesData || messagesData.length === 0) {
+        return {
+          messages: [] as ChatMessage[],
+          nextPage: null,
+        };
+      }
+
+      // Fetch profiles separately
+      const userIds = [...new Set(messagesData.map(m => m.user_id))];
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('id, username, display_name, avatar_url')
+        .in('id', userIds);
+      
+      const profileMap = new Map(profilesData?.map(p => [p.id, p]) || []);
+      
+      const messagesWithProfiles: ChatMessage[] = messagesData.map(msg => ({
+        ...msg,
+        profiles: profileMap.get(msg.user_id) || undefined,
+      }));
+      
       return {
-        messages: ((data || []) as unknown as ChatMessage[]).reverse(),
-        nextPage: data && data.length === MESSAGES_PER_PAGE ? pageParam + MESSAGES_PER_PAGE : null,
+        messages: messagesWithProfiles.reverse(),
+        nextPage: messagesData.length === MESSAGES_PER_PAGE ? pageParam + MESSAGES_PER_PAGE : null,
       };
     },
     getNextPageParam: (lastPage) => lastPage.nextPage,

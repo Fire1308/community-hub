@@ -100,7 +100,9 @@ export default function ProfilePage() {
   });
 
   // Fetch user threads
-  const { data: threads = [] } = useThreads({ authorId: profile?.id });
+  const { data: threadsData } = useThreads({ authorId: profile?.id });
+  const threads = threadsData?.threads || [];
+  const totalUserThreads = threadsData?.total || 0;
 
   const isOwnProfile = user?.id === profile?.id;
 
@@ -243,7 +245,7 @@ export default function ProfilePage() {
             {/* Stats */}
             <div className="flex gap-6 mt-6 pt-6 border-t">
               <div className="text-center">
-                <div className="text-xl font-bold">{threads.length}</div>
+                <div className="text-xl font-bold">{totalUserThreads}</div>
                 <div className="text-sm text-muted-foreground">Threads</div>
               </div>
               <div className="text-center">

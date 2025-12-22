@@ -7,19 +7,29 @@ import { Layout } from '@/components/layout/Layout';
 import { ThreadCard } from '@/components/forum/ThreadCard';
 import { CreateThreadDialog } from '@/components/forum/CreateThreadDialog';
 import { BackButton } from '@/components/layout/BackButton';
+import { PaginationControls } from '@/components/ui/pagination-controls';
 import { useCategory } from '@/hooks/useCategories';
 import { useThreads } from '@/hooks/useThreads';
 import { useAuth } from '@/contexts/AuthContext';
+
+const PAGE_SIZE = 10;
 
 export default function CategoryPage() {
   const { slug } = useParams<{ slug: string }>();
   const { user } = useAuth();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [page, setPage] = useState(1);
 
   const { data: category, isLoading: categoryLoading } = useCategory(slug!);
-  const { data: threads = [], isLoading: threadsLoading } = useThreads({
+  const { data: threadsData, isLoading: threadsLoading } = useThreads({
     categoryId: category?.id,
+    limit: PAGE_SIZE,
+    offset: (page - 1) * PAGE_SIZE,
   });
+
+  const threads = threadsData?.threads || [];
+  const totalThreads = threadsData?.total || 0;
+  const totalPages = Math.ceil(totalThreads / PAGE_SIZE);
 
   if (categoryLoading) {
     return (
@@ -93,10 +103,9 @@ export default function CategoryPage() {
           </CardContent>
         </Card>
 
-        {/* Threads */}
         <div className="space-y-4">
           <h2 className="text-xl font-semibold">
-            Threads {threads.length > 0 && `(${threads.length})`}
+            Threads {totalThreads > 0 && `(${totalThreads})`}
           </h2>
 
           {threadsLoading ? (
@@ -106,9 +115,19 @@ export default function CategoryPage() {
               </Card>
             ))
           ) : threads.length > 0 ? (
-            threads.map(thread => (
-              <ThreadCard key={thread.id} thread={thread} />
-            ))
+            <>
+              {threads.map(thread => (
+                <ThreadCard key={thread.id} thread={thread} />
+              ))}
+              {totalPages > 1 && (
+                <PaginationControls
+                  currentPage={page}
+                  totalPages={totalPages}
+                  onPageChange={setPage}
+                  className="mt-6"
+                />
+              )}
+            </>
           ) : (
             <Card>
               <CardContent className="p-8 text-center text-muted-foreground">
