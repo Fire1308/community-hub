@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, forwardRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -30,7 +30,10 @@ const reportReasons: { value: ReportReason; label: string }[] = [
   { value: 'other', label: 'Other' },
 ];
 
-export function ReportDialog({ open, onOpenChange, type, targetId }: ReportDialogProps) {
+export const ReportDialog = forwardRef<HTMLDivElement, ReportDialogProps>(function ReportDialog(
+  { open, onOpenChange, type, targetId },
+  ref
+) {
   const [reason, setReason] = useState<ReportReason>('spam');
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
@@ -83,7 +86,7 @@ export function ReportDialog({ open, onOpenChange, type, targetId }: ReportDialo
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent ref={ref}>
         <DialogHeader>
           <DialogTitle>Report {type}</DialogTitle>
           <DialogDescription>
@@ -129,4 +132,6 @@ export function ReportDialog({ open, onOpenChange, type, targetId }: ReportDialo
       </DialogContent>
     </Dialog>
   );
-}
+});
+
+ReportDialog.displayName = 'ReportDialog';

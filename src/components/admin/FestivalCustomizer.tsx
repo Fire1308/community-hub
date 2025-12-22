@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, forwardRef } from 'react';
 import { useFestivalSettings, useUpdateFestivalSettings } from '@/hooks/useFestivalSettings';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { Save, Sparkles } from 'lucide-react';
 
-export function FestivalCustomizer() {
+export const FestivalCustomizer = forwardRef<HTMLDivElement>(function FestivalCustomizer(_, ref) {
   const { data: festivals, isLoading } = useFestivalSettings();
   const updateFestival = useUpdateFestivalSettings();
   const { toast } = useToast();
@@ -69,7 +69,7 @@ export function FestivalCustomizer() {
   };
 
   return (
-    <Card>
+    <Card ref={ref}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Sparkles className="h-5 w-5" />
@@ -197,4 +197,6 @@ export function FestivalCustomizer() {
       </CardContent>
     </Card>
   );
-}
+});
+
+FestivalCustomizer.displayName = 'FestivalCustomizer';
