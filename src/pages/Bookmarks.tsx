@@ -53,7 +53,7 @@ export default function BookmarksPage() {
             {bookmarks.map(bookmark => (
               <div key={bookmark.id} className="relative group">
                 {bookmark.thread && (
-                  <ThreadCard thread={bookmark.thread as any} />
+                  <ThreadCard thread={bookmark.thread as any} showBookmarkButton={false} />
                 )}
                 <Button
                   variant="ghost"

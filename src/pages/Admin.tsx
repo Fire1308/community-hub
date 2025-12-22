@@ -758,6 +758,28 @@ export default function Admin() {
                             <div className="flex justify-end gap-2">
                               <Button
                                 size="sm"
+                                variant={category.is_locked ? "default" : "outline"}
+                                onClick={async () => {
+                                  try {
+                                    await updateCategory.mutateAsync({
+                                      id: category.id,
+                                      is_locked: !category.is_locked,
+                                    });
+                                    toast({
+                                      title: category.is_locked ? 'Category opened' : 'Category closed',
+                                      description: category.is_locked
+                                        ? 'Users can now post in this category'
+                                        : 'Only admins/mods can post in this category',
+                                    });
+                                  } catch {
+                                    toast({ title: 'Failed to update category', variant: 'destructive' });
+                                  }
+                                }}
+                              >
+                                {category.is_locked ? <Unlock className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+                              </Button>
+                              <Button
+                                size="sm"
                                 variant="outline"
                                 onClick={() => setEditingCategory({
                                   id: category.id,
