@@ -1,5 +1,5 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
+import { useQueryClient, useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -15,14 +15,17 @@ interface ChatMessage {
   };
 }
 
+const MESSAGES_PER_PAGE = 50;
+
 export function useGlobalChat() {
   const { user, profile } = useAuth();
   const queryClient = useQueryClient();
-  const messagesRef = useRef<ChatMessage[]>([]);
+  const pendingMessageId = useRef<string | null>(null);
+  const [shouldScrollToBottom, setShouldScrollToBottom] = useState(true);
 
-  const messagesQuery = useQuery({
+  const messagesQuery = useInfiniteQuery({
     queryKey: ['global-chat'],
-    queryFn: async () => {
+    queryFn: async ({ pageParam = 0 }) => {
       const { data, error } = await supabase
         .from('global_chat')
         .select(`
@@ -33,19 +36,26 @@ export function useGlobalChat() {
             avatar_url
           )
         `)
-        .order('created_at', { ascending: true })
-        .limit(100);
+        .order('created_at', { ascending: false })
+        .range(pageParam, pageParam + MESSAGES_PER_PAGE - 1);
 
       if (error) throw error;
-      const messages = (data || []) as unknown as ChatMessage[];
-      messagesRef.current = messages;
-      return messages;
+      
+      return {
+        messages: ((data || []) as unknown as ChatMessage[]).reverse(),
+        nextPage: data && data.length === MESSAGES_PER_PAGE ? pageParam + MESSAGES_PER_PAGE : null,
+      };
     },
+    getNextPageParam: (lastPage) => lastPage.nextPage,
     enabled: !!user,
-    staleTime: Infinity, // Don't refetch automatically, rely on realtime
+    staleTime: Infinity,
+    initialPageParam: 0,
   });
 
-  // Real-time subscription with optimistic updates
+  // Flatten all pages into single array
+  const messages = messagesQuery.data?.pages.flatMap(page => page.messages) || [];
+
+  // Real-time subscription - FIXED to prevent duplicates
   useEffect(() => {
     if (!user) return;
 
@@ -61,30 +71,41 @@ export function useGlobalChat() {
         async (payload) => {
           const newMessage = payload.new as any;
           
-          // Check if this message already exists (from optimistic update)
-          const existingMessages = queryClient.getQueryData<ChatMessage[]>(['global-chat']) || [];
-          const exists = existingMessages.some(m => m.id === newMessage.id);
-          
-          if (!exists) {
-            // Fetch the profile for this message
-            const { data: profileData } = await supabase
-              .from('profiles')
-              .select('username, display_name, avatar_url')
-              .eq('id', newMessage.user_id)
-              .single();
-
-            const messageWithProfile: ChatMessage = {
-              ...newMessage,
-              profiles: profileData,
-            };
-
-            // Add new message to cache
-            queryClient.setQueryData<ChatMessage[]>(['global-chat'], (old = []) => {
-              // Prevent duplicates
-              if (old.some(m => m.id === messageWithProfile.id)) return old;
-              return [...old, messageWithProfile];
-            });
+          // If this is from current user, it was already added optimistically
+          if (newMessage.user_id === user.id) {
+            return;
           }
+          
+          // Fetch the profile for this message
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('username, display_name, avatar_url')
+            .eq('id', newMessage.user_id)
+            .single();
+
+          const messageWithProfile: ChatMessage = {
+            ...newMessage,
+            profiles: profileData,
+          };
+
+          // Add new message to cache
+          queryClient.setQueryData(['global-chat'], (old: any) => {
+            if (!old) return old;
+            
+            // Check if message already exists
+            const allMessages = old.pages.flatMap((p: any) => p.messages);
+            if (allMessages.some((m: ChatMessage) => m.id === messageWithProfile.id)) return old;
+            
+            const newPages = [...old.pages];
+            const lastPageIndex = newPages.length - 1;
+            newPages[lastPageIndex] = {
+              ...newPages[lastPageIndex],
+              messages: [...newPages[lastPageIndex].messages, messageWithProfile],
+            };
+            return { ...old, pages: newPages };
+          });
+          
+          setShouldScrollToBottom(true);
         }
       )
       .subscribe();
@@ -111,15 +132,15 @@ export function useGlobalChat() {
       return data;
     },
     onMutate: async (message) => {
-      // Cancel any outgoing refetches
+      setShouldScrollToBottom(true);
       await queryClient.cancelQueries({ queryKey: ['global-chat'] });
 
-      // Snapshot the previous value
-      const previousMessages = queryClient.getQueryData<ChatMessage[]>(['global-chat']);
+      const previousData = queryClient.getQueryData(['global-chat']);
+      const tempId = `temp-${Date.now()}-${Math.random()}`;
+      pendingMessageId.current = tempId;
 
-      // Create optimistic message
       const optimisticMessage: ChatMessage = {
-        id: `temp-${Date.now()}`,
+        id: tempId,
         user_id: user!.id,
         message: message.trim(),
         created_at: new Date().toISOString(),
@@ -130,36 +151,55 @@ export function useGlobalChat() {
         },
       };
 
-      // Optimistically add the message
-      queryClient.setQueryData<ChatMessage[]>(['global-chat'], (old = []) => [
-        ...old,
-        optimisticMessage,
-      ]);
+      queryClient.setQueryData(['global-chat'], (old: any) => {
+        if (!old) return { pages: [{ messages: [optimisticMessage], nextPage: null }], pageParams: [0] };
+        
+        const newPages = [...old.pages];
+        const lastPageIndex = newPages.length - 1;
+        newPages[lastPageIndex] = {
+          ...newPages[lastPageIndex],
+          messages: [...newPages[lastPageIndex].messages, optimisticMessage],
+        };
+        return { ...old, pages: newPages };
+      });
 
-      return { previousMessages, optimisticMessage };
+      return { previousData, tempId };
     },
     onSuccess: (data, _, context) => {
       // Replace temp message with real one
-      queryClient.setQueryData<ChatMessage[]>(['global-chat'], (old = []) => {
-        return old.map(msg => 
-          msg.id === context?.optimisticMessage.id 
-            ? { ...data, profiles: context.optimisticMessage.profiles }
-            : msg
-        );
+      queryClient.setQueryData(['global-chat'], (old: any) => {
+        if (!old) return old;
+        
+        const newPages = old.pages.map((page: any) => ({
+          ...page,
+          messages: page.messages.map((msg: ChatMessage) =>
+            msg.id === context?.tempId 
+              ? { ...data, profiles: { username: profile?.username, display_name: profile?.display_name, avatar_url: profile?.avatar_url } }
+              : msg
+          ),
+        }));
+        return { ...old, pages: newPages };
       });
+      
+      pendingMessageId.current = null;
     },
     onError: (_, __, context) => {
-      // Rollback on error
-      if (context?.previousMessages) {
-        queryClient.setQueryData(['global-chat'], context.previousMessages);
+      if (context?.previousData) {
+        queryClient.setQueryData(['global-chat'], context.previousData);
       }
+      pendingMessageId.current = null;
     },
   });
 
   return {
-    messages: messagesQuery.data || [],
+    messages,
     isLoading: messagesQuery.isLoading,
     sendMessage,
+    hasNextPage: messagesQuery.hasNextPage,
+    fetchNextPage: messagesQuery.fetchNextPage,
+    isFetchingNextPage: messagesQuery.isFetchingNextPage,
+    shouldScrollToBottom,
+    setShouldScrollToBottom,
   };
 }
 

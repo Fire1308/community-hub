@@ -569,9 +569,12 @@ export type Database = {
           created_at: string
           display_name: string | null
           id: string
+          is_online: boolean | null
           language: string | null
+          last_seen_at: string | null
           location: string | null
           reputation_points: number | null
+          show_online_status: boolean | null
           updated_at: string
           username: string
         }
@@ -582,9 +585,12 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id: string
+          is_online?: boolean | null
           language?: string | null
+          last_seen_at?: string | null
           location?: string | null
           reputation_points?: number | null
+          show_online_status?: boolean | null
           updated_at?: string
           username: string
         }
@@ -595,9 +601,12 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           id?: string
+          is_online?: boolean | null
           language?: string | null
+          last_seen_at?: string | null
           location?: string | null
           reputation_points?: number | null
+          show_online_status?: boolean | null
           updated_at?: string
           username?: string
         }

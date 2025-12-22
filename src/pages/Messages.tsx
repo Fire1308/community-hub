@@ -1,22 +1,25 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, useInfiniteQuery } from '@tanstack/react-query';
 import { formatDistanceToNow, format } from 'date-fns';
-import { Send, Search, MoreVertical, Smile, Check, CheckCheck, ArrowLeft, User, MessageCircle } from 'lucide-react';
+import { Send, Search, MoreVertical, Smile, Check, CheckCheck, ArrowLeft, User, MessageCircle, Eye, EyeOff, ChevronUp, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { Layout } from '@/components/layout/Layout';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useOnlineStatus } from '@/hooks/useUnreadMessages';
 import type { PrivateMessage, Profile } from '@/lib/supabase-types';
 
 const EMOJI_LIST = ['😀', '😂', '😍', '🥰', '😎', '🤔', '👍', '👎', '❤️', '🔥', '💯', '🎉', '🙏', '💪', '✨', '😢', '😮', '🤣', '😊', '🥺', '👀', '💀', '🤝', '👏'];
+const MESSAGES_PER_PAGE = 30;
 
-type MessageWithProfile = PrivateMessage & { sender: Profile; recipient: Profile };
-type ConversationItem = { profile: Profile; lastMessage: PrivateMessage; unread: number };
+type ConversationItem = { profile: Profile & { is_online?: boolean; show_online_status?: boolean }; lastMessage: PrivateMessage; unread: number };
 
 export default function MessagesPage() {
   const [searchParams] = useSearchParams();
@@ -28,7 +31,15 @@ export default function MessagesPage() {
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [showNewChat, setShowNewChat] = useState(false);
   const [showEmojis, setShowEmojis] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesTopRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const { showOnlineStatus, toggleOnlineVisibility, isLoading: statusLoading } = useOnlineStatus();
+  
+  // Track if we should scroll to bottom (only for new messages, not pagination)
+  const shouldScrollToBottom = useRef(true);
+  const pendingMessageId = useRef<string | null>(null);
 
   // Fetch all users for new chat
   const { data: allUsers = [] } = useQuery({
@@ -37,7 +48,7 @@ export default function MessagesPage() {
       if (!user) return [];
       let query = supabase
         .from('profiles')
-        .select('*')
+        .select('*, is_online, show_online_status')
         .neq('id', user.id)
         .limit(20);
       
@@ -46,7 +57,7 @@ export default function MessagesPage() {
       }
       
       const { data } = await query;
-      return (data || []) as Profile[];
+      return (data || []) as (Profile & { is_online?: boolean; show_online_status?: boolean })[];
     },
     enabled: !!user && showNewChat,
   });
@@ -65,21 +76,18 @@ export default function MessagesPage() {
 
       if (!messages || messages.length === 0) return [];
 
-      // Get unique user IDs
       const userIds = new Set<string>();
       messages.forEach((msg: any) => {
         if (msg.sender_id !== user.id) userIds.add(msg.sender_id);
         if (msg.recipient_id !== user.id) userIds.add(msg.recipient_id);
       });
 
-      // Fetch profiles
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('*')
+        .select('*, is_online, show_online_status')
         .in('id', Array.from(userIds));
 
       const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
-
       const userMap = new Map<string, ConversationItem>();
       
       messages.forEach((msg: any) => {
@@ -91,7 +99,7 @@ export default function MessagesPage() {
             m.sender_id === otherUserId && !m.is_read
           ).length;
           userMap.set(otherUserId, {
-            profile: otherProfile as Profile,
+            profile: otherProfile as Profile & { is_online?: boolean; show_online_status?: boolean },
             lastMessage: msg,
             unread,
           });
@@ -101,23 +109,32 @@ export default function MessagesPage() {
       return Array.from(userMap.values());
     },
     enabled: !!user,
-    staleTime: Infinity,
+    staleTime: 30000,
   });
 
-  // Fetch messages for selected conversation
-  const { data: messages = [] } = useQuery({
+  // Fetch messages with infinite query for pagination
+  const {
+    data: messagesData,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    isLoading: messagesLoading,
+  } = useInfiniteQuery({
     queryKey: ['messages', user?.id, selectedUserId],
-    queryFn: async () => {
-      if (!user || !selectedUserId) return [];
+    queryFn: async ({ pageParam = 0 }) => {
+      if (!user || !selectedUserId) return { messages: [], nextPage: null };
 
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('private_messages')
         .select('*')
         .or(`and(sender_id.eq.${user.id},recipient_id.eq.${selectedUserId}),and(sender_id.eq.${selectedUserId},recipient_id.eq.${user.id})`)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: false })
+        .range(pageParam, pageParam + MESSAGES_PER_PAGE - 1);
+
+      if (error) throw error;
 
       // Mark as read
-      if (data && data.length > 0) {
+      if (data && data.length > 0 && pageParam === 0) {
         supabase
           .from('private_messages')
           .update({ is_read: true })
@@ -126,19 +143,31 @@ export default function MessagesPage() {
           .eq('is_read', false)
           .then(() => {
             queryClient.invalidateQueries({ queryKey: ['conversations', user.id] });
+            queryClient.invalidateQueries({ queryKey: ['unread-messages-count', user.id] });
           });
       }
 
-      return (data || []) as PrivateMessage[];
+      return {
+        messages: (data || []).reverse() as PrivateMessage[],
+        nextPage: data && data.length === MESSAGES_PER_PAGE ? pageParam + MESSAGES_PER_PAGE : null,
+      };
     },
+    getNextPageParam: (lastPage) => lastPage.nextPage,
     enabled: !!user && !!selectedUserId,
     staleTime: Infinity,
+    initialPageParam: 0,
   });
 
-  // Send message with optimistic update
+  // Flatten messages from all pages
+  const messages = messagesData?.pages.flatMap(page => page.messages) || [];
+
+  // Send message with optimistic update - NO duplicate issue
   const sendMessage = useMutation({
     mutationFn: async (content: string) => {
       if (!user || !selectedUserId) throw new Error('Not authenticated');
+
+      const tempId = `temp-${Date.now()}-${Math.random()}`;
+      pendingMessageId.current = tempId;
 
       const { data, error } = await supabase
         .from('private_messages')
@@ -151,25 +180,18 @@ export default function MessagesPage() {
         .single();
 
       if (error) throw error;
-
-      // Send notification
-      await supabase.from('notifications').insert({
-        user_id: selectedUserId,
-        type: 'message',
-        title: 'New Message',
-        message: `${profile?.display_name || profile?.username} sent you a message`,
-        link: `/messages?user=${user.id}`,
-      });
-
-      return data;
+      return { ...data, tempId };
     },
     onMutate: async (content) => {
+      shouldScrollToBottom.current = true;
       await queryClient.cancelQueries({ queryKey: ['messages', user?.id, selectedUserId] });
       
-      const previousMessages = queryClient.getQueryData<PrivateMessage[]>(['messages', user?.id, selectedUserId]);
+      const previousData = queryClient.getQueryData(['messages', user?.id, selectedUserId]);
+      const tempId = `temp-${Date.now()}-${Math.random()}`;
+      pendingMessageId.current = tempId;
 
       const optimisticMessage: PrivateMessage = {
-        id: `temp-${Date.now()}`,
+        id: tempId,
         sender_id: user!.id,
         recipient_id: selectedUserId!,
         content,
@@ -177,27 +199,46 @@ export default function MessagesPage() {
         created_at: new Date().toISOString(),
       };
 
-      queryClient.setQueryData<PrivateMessage[]>(['messages', user?.id, selectedUserId], (old = []) => [
-        ...old,
-        optimisticMessage,
-      ]);
+      queryClient.setQueryData(['messages', user?.id, selectedUserId], (old: any) => {
+        if (!old) return { pages: [{ messages: [optimisticMessage], nextPage: null }], pageParams: [0] };
+        
+        const newPages = [...old.pages];
+        const lastPageIndex = newPages.length - 1;
+        newPages[lastPageIndex] = {
+          ...newPages[lastPageIndex],
+          messages: [...newPages[lastPageIndex].messages, optimisticMessage],
+        };
+        return { ...old, pages: newPages };
+      });
 
-      return { previousMessages, optimisticMessage };
+      return { previousData, tempId };
     },
     onSuccess: (data, _, context) => {
-      queryClient.setQueryData<PrivateMessage[]>(['messages', user?.id, selectedUserId], (old = []) => {
-        return old.map(msg => msg.id === context?.optimisticMessage.id ? data : msg);
+      // Replace temp message with real one
+      queryClient.setQueryData(['messages', user?.id, selectedUserId], (old: any) => {
+        if (!old) return old;
+        
+        const newPages = old.pages.map((page: any) => ({
+          ...page,
+          messages: page.messages.map((msg: PrivateMessage) =>
+            msg.id === context?.tempId ? data : msg
+          ),
+        }));
+        return { ...old, pages: newPages };
       });
+      
       queryClient.invalidateQueries({ queryKey: ['conversations', user?.id] });
+      pendingMessageId.current = null;
     },
     onError: (_, __, context) => {
-      if (context?.previousMessages) {
-        queryClient.setQueryData(['messages', user?.id, selectedUserId], context.previousMessages);
+      if (context?.previousData) {
+        queryClient.setQueryData(['messages', user?.id, selectedUserId], context.previousData);
       }
+      pendingMessageId.current = null;
     },
   });
 
-  // Real-time subscription
+  // Real-time subscription - FIXED to prevent duplicates
   useEffect(() => {
     if (!user) return;
 
@@ -211,24 +252,50 @@ export default function MessagesPage() {
           table: 'private_messages',
         },
         (payload) => {
-          const newMsg = payload.new as any;
+          const newMsg = payload.new as PrivateMessage;
           
           // Only handle messages relevant to this user
           if (newMsg.recipient_id !== user.id && newMsg.sender_id !== user.id) return;
 
-          // Update messages if viewing this conversation
-          if (
-            (newMsg.sender_id === selectedUserId && newMsg.recipient_id === user.id) ||
-            (newMsg.sender_id === user.id && newMsg.recipient_id === selectedUserId)
-          ) {
-            queryClient.setQueryData<PrivateMessage[]>(['messages', user.id, selectedUserId], (old = []) => {
-              if (old.some(m => m.id === newMsg.id)) return old;
-              return [...old, newMsg];
-            });
+          // If this is from the current user, it was already added optimistically
+          if (newMsg.sender_id === user.id) {
+            // Just replace the temp message with the real one (already done in onSuccess)
+            return;
           }
 
-          // Update conversations
+          // Incoming message from another user
+          if (
+            (newMsg.sender_id === selectedUserId && newMsg.recipient_id === user.id)
+          ) {
+            shouldScrollToBottom.current = true;
+            
+            queryClient.setQueryData(['messages', user.id, selectedUserId], (old: any) => {
+              if (!old) return old;
+              
+              // Check if message already exists
+              const allMessages = old.pages.flatMap((p: any) => p.messages);
+              if (allMessages.some((m: PrivateMessage) => m.id === newMsg.id)) return old;
+              
+              const newPages = [...old.pages];
+              const lastPageIndex = newPages.length - 1;
+              newPages[lastPageIndex] = {
+                ...newPages[lastPageIndex],
+                messages: [...newPages[lastPageIndex].messages, newMsg],
+              };
+              return { ...old, pages: newPages };
+            });
+
+            // Mark as read immediately
+            supabase
+              .from('private_messages')
+              .update({ is_read: true })
+              .eq('id', newMsg.id)
+              .then();
+          }
+
+          // Update conversations list
           queryClient.invalidateQueries({ queryKey: ['conversations', user.id] });
+          queryClient.invalidateQueries({ queryKey: ['unread-messages-count', user.id] });
         }
       )
       .on(
@@ -239,11 +306,18 @@ export default function MessagesPage() {
           table: 'private_messages',
         },
         (payload) => {
-          const updatedMsg = payload.new as any;
+          const updatedMsg = payload.new as PrivateMessage;
           
-          // Update read status in messages
-          queryClient.setQueryData<PrivateMessage[]>(['messages', user.id, selectedUserId], (old = []) => {
-            return old.map(m => m.id === updatedMsg.id ? { ...m, is_read: updatedMsg.is_read } : m);
+          queryClient.setQueryData(['messages', user.id, selectedUserId], (old: any) => {
+            if (!old) return old;
+            
+            const newPages = old.pages.map((page: any) => ({
+              ...page,
+              messages: page.messages.map((m: PrivateMessage) =>
+                m.id === updatedMsg.id ? { ...m, is_read: updatedMsg.is_read } : m
+              ),
+            }));
+            return { ...old, pages: newPages };
           });
         }
       )
@@ -254,10 +328,23 @@ export default function MessagesPage() {
     };
   }, [user, selectedUserId, queryClient]);
 
-  // Scroll to bottom
+  // Scroll to bottom only for new messages
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    if (shouldScrollToBottom.current && messages.length > 0) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      shouldScrollToBottom.current = false;
+    }
+  }, [messages.length]);
+
+  // Initial scroll to bottom when selecting conversation
+  useEffect(() => {
+    if (selectedUserId) {
+      shouldScrollToBottom.current = true;
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+      }, 100);
+    }
+  }, [selectedUserId]);
 
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
@@ -270,6 +357,13 @@ export default function MessagesPage() {
   const startNewChat = (userId: string) => {
     setSelectedUserId(userId);
     setShowNewChat(false);
+  };
+
+  const loadMoreMessages = () => {
+    if (hasNextPage && !isFetchingNextPage) {
+      shouldScrollToBottom.current = false;
+      fetchNextPage();
+    }
   };
 
   const selectedConversation = conversations.find(c => c.profile.id === selectedUserId);
@@ -299,13 +393,41 @@ export default function MessagesPage() {
           <div className="p-4 border-b">
             <div className="flex items-center justify-between mb-4">
               <h1 className="text-xl font-bold">Messages</h1>
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={() => setShowNewChat(!showNewChat)}
-              >
-                {showNewChat ? 'Cancel' : 'New Chat'}
-              </Button>
+              <div className="flex items-center gap-2">
+                <Popover open={showSettings} onOpenChange={setShowSettings}>
+                  <PopoverTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      {showOnlineStatus ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64" align="end">
+                    <div className="space-y-4">
+                      <h4 className="font-medium">Activity Status</h4>
+                      <div className="flex items-center justify-between">
+                        <Label htmlFor="online-status" className="text-sm">
+                          Show when active
+                        </Label>
+                        <Switch
+                          id="online-status"
+                          checked={showOnlineStatus}
+                          onCheckedChange={toggleOnlineVisibility}
+                          disabled={statusLoading}
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Others can see when you're online
+                      </p>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setShowNewChat(!showNewChat)}
+                >
+                  {showNewChat ? 'Cancel' : 'New Chat'}
+                </Button>
+              </div>
             </div>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -328,10 +450,15 @@ export default function MessagesPage() {
                     onClick={() => startNewChat(userItem.id)}
                     className="w-full p-4 flex items-center gap-3 hover:bg-muted/50 transition-colors text-left"
                   >
-                    <Avatar className="h-12 w-12">
-                      <AvatarImage src={userItem.avatar_url || undefined} />
-                      <AvatarFallback>{userItem.username?.[0]?.toUpperCase()}</AvatarFallback>
-                    </Avatar>
+                    <div className="relative">
+                      <Avatar className="h-12 w-12">
+                        <AvatarImage src={userItem.avatar_url || undefined} />
+                        <AvatarFallback>{userItem.username?.[0]?.toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                      {userItem.show_online_status && userItem.is_online && (
+                        <span className="absolute bottom-0 right-0 h-3 w-3 bg-green-500 rounded-full border-2 border-card" />
+                      )}
+                    </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium">{userItem.display_name || userItem.username}</p>
                       <p className="text-sm text-muted-foreground">@{userItem.username}</p>
@@ -365,6 +492,9 @@ export default function MessagesPage() {
                           <AvatarImage src={p.avatar_url || undefined} />
                           <AvatarFallback>{p.username?.[0]?.toUpperCase()}</AvatarFallback>
                         </Avatar>
+                        {p.show_online_status && p.is_online && (
+                          <span className="absolute bottom-0 right-0 h-3 w-3 bg-green-500 rounded-full border-2 border-card" />
+                        )}
                         {unread > 0 && (
                           <span className="absolute -top-1 -right-1 h-5 w-5 bg-primary text-primary-foreground rounded-full text-xs flex items-center justify-center">
                             {unread}
@@ -421,22 +551,59 @@ export default function MessagesPage() {
                 >
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
-                <Avatar className="h-10 w-10">
-                  <AvatarImage src={selectedProfile.avatar_url || undefined} />
-                  <AvatarFallback>{selectedProfile.username?.[0]?.toUpperCase()}</AvatarFallback>
-                </Avatar>
+                <div className="relative">
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage src={selectedProfile.avatar_url || undefined} />
+                    <AvatarFallback>{selectedProfile.username?.[0]?.toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  {selectedProfile.show_online_status && selectedProfile.is_online && (
+                    <span className="absolute bottom-0 right-0 h-2.5 w-2.5 bg-green-500 rounded-full border-2 border-card" />
+                  )}
+                </div>
                 <div className="flex-1">
                   <Link to={`/profile/${selectedProfile.username}`} className="font-medium hover:underline">
                     {selectedProfile.display_name || selectedProfile.username}
                   </Link>
-                  <p className="text-xs text-muted-foreground">@{selectedProfile.username}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {selectedProfile.show_online_status && selectedProfile.is_online ? (
+                      <span className="text-green-600">Active now</span>
+                    ) : (
+                      `@${selectedProfile.username}`
+                    )}
+                  </p>
                 </div>
                 <Button variant="ghost" size="icon"><MoreVertical className="h-5 w-5" /></Button>
               </div>
 
               {/* Messages */}
-              <ScrollArea className="flex-1 p-4">
+              <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
                 <div className="space-y-4 max-w-3xl mx-auto">
+                  {/* Load More Button */}
+                  {hasNextPage && (
+                    <div className="text-center" ref={messagesTopRef}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={loadMoreMessages}
+                        disabled={isFetchingNextPage}
+                        className="gap-2"
+                      >
+                        {isFetchingNextPage ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <ChevronUp className="h-4 w-4" />
+                        )}
+                        Load earlier messages
+                      </Button>
+                    </div>
+                  )}
+
+                  {messagesLoading && messages.length === 0 && (
+                    <div className="text-center py-8">
+                      <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
+                    </div>
+                  )}
+
                   {messages.map((message, idx) => {
                     const isMe = message.sender_id === user.id;
                     const showDate = idx === 0 || 
