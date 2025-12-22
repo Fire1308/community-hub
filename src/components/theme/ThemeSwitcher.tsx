@@ -1,7 +1,8 @@
-import { Check, Palette, PartyPopper } from 'lucide-react';
+import { Check, Palette, PartyPopper, Grid3X3, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
 import {
   Sheet,
   SheetContent,
@@ -13,64 +14,154 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useForumTheme, forumThemes, festivalThemes, ForumTheme, FestivalTheme } from '@/contexts/ForumThemeContext';
 
+const themeCategories = {
+  minimal: ['default', 'minimal-editorial', 'nature-calm', 'corporate'],
+  dark: ['dark-glass', 'neon-cyberpunk', 'terminal', 'luxury-premium', 'power-user', 'motion-driven'],
+  colorful: ['soft-pastel', 'gen-z', 'retro-pixel'],
+  content: ['social-feed', 'knowledge-base', 'magazine'],
+};
+
 export function ThemeSwitcher() {
   const { forumTheme, setForumTheme, festivalTheme, setFestivalTheme } = useForumTheme();
 
   return (
     <Sheet>
       <SheetTrigger asChild>
-        <Button variant="outline" size="icon" className="fixed bottom-4 right-4 z-50 h-12 w-12 rounded-full shadow-lg">
+        <Button variant="outline" size="icon" className="fixed bottom-4 right-4 z-50 h-12 w-12 rounded-full shadow-lg hover:scale-105 transition-transform">
           <Palette className="h-5 w-5" />
         </Button>
       </SheetTrigger>
-      <SheetContent className="w-[400px] sm:w-[540px]">
+      <SheetContent className="w-[400px] sm:w-[600px]">
         <SheetHeader>
-          <SheetTitle>Customize Theme</SheetTitle>
+          <SheetTitle className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5" />
+            Theme Customizer
+          </SheetTitle>
           <SheetDescription>Choose your forum style and seasonal decorations</SheetDescription>
         </SheetHeader>
 
         <Tabs defaultValue="style" className="mt-6">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="style" className="flex items-center gap-2">
-              <Palette className="h-4 w-4" />
+              <Grid3X3 className="h-4 w-4" />
               Forum Style
             </TabsTrigger>
             <TabsTrigger value="festival" className="flex items-center gap-2">
               <PartyPopper className="h-4 w-4" />
-              Festival
+              Festival Theme
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="style" className="mt-4">
-            <ScrollArea className="h-[60vh]">
-              <div className="grid gap-3 pr-4">
-                {forumThemes.map((theme) => (
-                  <ThemeCard
-                    key={theme.id}
-                    name={theme.name}
-                    description={theme.description}
-                    isSelected={forumTheme === theme.id}
-                    onClick={() => setForumTheme(theme.id)}
-                    preview={<ThemePreview theme={theme.id} />}
-                  />
-                ))}
+            <ScrollArea className="h-[65vh]">
+              <div className="space-y-6 pr-4">
+                {/* Light/Minimal Themes */}
+                <div>
+                  <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-gradient-to-r from-gray-100 to-gray-200" />
+                    Light & Minimal
+                  </h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    {forumThemes.filter(t => themeCategories.minimal.includes(t.id)).map((theme) => (
+                      <ThemeCard
+                        key={theme.id}
+                        theme={theme}
+                        isSelected={forumTheme === theme.id}
+                        onClick={() => setForumTheme(theme.id)}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Dark Themes */}
+                <div>
+                  <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-gradient-to-r from-slate-700 to-slate-900" />
+                    Dark & Premium
+                  </h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    {forumThemes.filter(t => themeCategories.dark.includes(t.id)).map((theme) => (
+                      <ThemeCard
+                        key={theme.id}
+                        theme={theme}
+                        isSelected={forumTheme === theme.id}
+                        onClick={() => setForumTheme(theme.id)}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Colorful Themes */}
+                <div>
+                  <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-gradient-to-r from-pink-400 to-purple-400" />
+                    Colorful & Fun
+                  </h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    {forumThemes.filter(t => themeCategories.colorful.includes(t.id)).map((theme) => (
+                      <ThemeCard
+                        key={theme.id}
+                        theme={theme}
+                        isSelected={forumTheme === theme.id}
+                        onClick={() => setForumTheme(theme.id)}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Content-Focused Themes */}
+                <div>
+                  <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full bg-gradient-to-r from-blue-400 to-orange-400" />
+                    Content-Focused
+                  </h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    {forumThemes.filter(t => themeCategories.content.includes(t.id)).map((theme) => (
+                      <ThemeCard
+                        key={theme.id}
+                        theme={theme}
+                        isSelected={forumTheme === theme.id}
+                        onClick={() => setForumTheme(theme.id)}
+                      />
+                    ))}
+                  </div>
+                </div>
               </div>
             </ScrollArea>
           </TabsContent>
 
           <TabsContent value="festival" className="mt-4">
-            <ScrollArea className="h-[60vh]">
-              <div className="grid gap-3 pr-4">
-                {festivalThemes.map((festival) => (
-                  <ThemeCard
-                    key={festival.id}
-                    name={`${festival.emoji} ${festival.name}`}
-                    description={festival.description}
-                    isSelected={festivalTheme === festival.id}
-                    onClick={() => setFestivalTheme(festival.id)}
-                    preview={<FestivalPreview festival={festival.id} />}
-                  />
-                ))}
+            <ScrollArea className="h-[65vh]">
+              <div className="space-y-6 pr-4">
+                {/* Global Festivals */}
+                <div>
+                  <h3 className="text-sm font-medium mb-3">🌍 Global Celebrations</h3>
+                  <div className="grid gap-3">
+                    {festivalThemes.filter(f => ['none', 'christmas', 'new-year', 'halloween'].includes(f.id)).map((festival) => (
+                      <FestivalCard
+                        key={festival.id}
+                        festival={festival}
+                        isSelected={festivalTheme === festival.id}
+                        onClick={() => setFestivalTheme(festival.id)}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Myanmar Festivals */}
+                <div>
+                  <h3 className="text-sm font-medium mb-3">🇲🇲 Myanmar Festivals</h3>
+                  <div className="grid gap-3">
+                    {festivalThemes.filter(f => ['thingyan', 'thadingyut', 'tazaungdaing'].includes(f.id)).map((festival) => (
+                      <FestivalCard
+                        key={festival.id}
+                        festival={festival}
+                        isSelected={festivalTheme === festival.id}
+                        onClick={() => setFestivalTheme(festival.id)}
+                      />
+                    ))}
+                  </div>
+                </div>
               </div>
             </ScrollArea>
           </TabsContent>
@@ -81,17 +172,44 @@ export function ThemeSwitcher() {
 }
 
 function ThemeCard({
-  name,
-  description,
+  theme,
   isSelected,
   onClick,
-  preview,
 }: {
-  name: string;
-  description: string;
+  theme: { id: ForumTheme; name: string; description: string };
   isSelected: boolean;
   onClick: () => void;
-  preview: React.ReactNode;
+}) {
+  return (
+    <Card
+      className={`cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5 ${
+        isSelected ? 'ring-2 ring-primary shadow-md' : ''
+      }`}
+      onClick={onClick}
+    >
+      <CardContent className="p-3">
+        <div className="space-y-2">
+          <div className="h-16 rounded-md overflow-hidden border">
+            <ThemePreview theme={theme.id} />
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium truncate">{theme.name}</span>
+            {isSelected && <Check className="h-3.5 w-3.5 text-primary flex-shrink-0" />}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function FestivalCard({
+  festival,
+  isSelected,
+  onClick,
+}: {
+  festival: { id: FestivalTheme; name: string; description: string; emoji: string; nameMM?: string };
+  isSelected: boolean;
+  onClick: () => void;
 }) {
   return (
     <Card
@@ -101,16 +219,24 @@ function ThemeCard({
       onClick={onClick}
     >
       <CardContent className="p-4">
-        <div className="flex items-start gap-4">
-          <div className="w-20 h-14 rounded-md overflow-hidden border flex-shrink-0">
-            {preview}
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 rounded-lg overflow-hidden border flex-shrink-0">
+            <FestivalPreview festival={festival.id} />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm">{name}</CardTitle>
-              {isSelected && <Check className="h-4 w-4 text-primary" />}
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">{festival.emoji}</span>
+                <div>
+                  <p className="font-medium">{festival.name}</p>
+                  {festival.nameMM && (
+                    <p className="text-xs text-muted-foreground">{festival.nameMM}</p>
+                  )}
+                </div>
+              </div>
+              {isSelected && <Check className="h-5 w-5 text-primary" />}
             </div>
-            <CardDescription className="text-xs mt-1">{description}</CardDescription>
+            <p className="text-xs text-muted-foreground mt-1">{festival.description}</p>
           </div>
         </div>
       </CardContent>
@@ -119,62 +245,79 @@ function ThemeCard({
 }
 
 function ThemePreview({ theme }: { theme: ForumTheme }) {
-  const previewStyles: Record<ForumTheme, { bg: string; accent: string; text: string }> = {
-    default: { bg: 'bg-background', accent: 'bg-primary', text: 'bg-foreground' },
-    'minimal-editorial': { bg: 'bg-white', accent: 'bg-gray-900', text: 'bg-gray-400' },
-    'dark-glass': { bg: 'bg-slate-900', accent: 'bg-blue-500/50', text: 'bg-white/20' },
-    'neon-cyberpunk': { bg: 'bg-black', accent: 'bg-pink-500', text: 'bg-cyan-400' },
-    'soft-pastel': { bg: 'bg-pink-50', accent: 'bg-pink-300', text: 'bg-purple-200' },
-    terminal: { bg: 'bg-black', accent: 'bg-green-500', text: 'bg-green-700' },
-    'social-feed': { bg: 'bg-gray-100', accent: 'bg-blue-600', text: 'bg-gray-300' },
-    'knowledge-base': { bg: 'bg-white', accent: 'bg-orange-500', text: 'bg-gray-200' },
-    'luxury-premium': { bg: 'bg-gray-900', accent: 'bg-yellow-500', text: 'bg-gray-700' },
-    'gen-z': { bg: 'bg-purple-900', accent: 'bg-yellow-400', text: 'bg-pink-400' },
-    corporate: { bg: 'bg-slate-100', accent: 'bg-blue-700', text: 'bg-slate-300' },
-    magazine: { bg: 'bg-white', accent: 'bg-red-600', text: 'bg-gray-200' },
-    'retro-pixel': { bg: 'bg-indigo-900', accent: 'bg-green-400', text: 'bg-purple-400' },
-    'nature-calm': { bg: 'bg-green-50', accent: 'bg-green-600', text: 'bg-green-200' },
-    'power-user': { bg: 'bg-gray-900', accent: 'bg-cyan-500', text: 'bg-gray-700' },
-    'motion-driven': { bg: 'bg-violet-950', accent: 'bg-violet-500', text: 'bg-violet-700' },
+  const previewStyles: Record<ForumTheme, { bg: string; card: string; accent: string; text: string }> = {
+    default: { bg: 'bg-[hsl(209,40%,96%)]', card: 'bg-[hsl(210,40%,98%)]', accent: 'bg-[hsl(200,98%,39%)]', text: 'bg-[hsl(222,47%,11%)]' },
+    'minimal-editorial': { bg: 'bg-white', card: 'bg-white', accent: 'bg-gray-900', text: 'bg-gray-400' },
+    'dark-glass': { bg: 'bg-[hsl(222,47%,6%)]', card: 'bg-[hsl(220,30%,12%)]/70', accent: 'bg-[hsl(217,91%,60%)]', text: 'bg-white/30' },
+    'neon-cyberpunk': { bg: 'bg-[hsl(270,50%,5%)]', card: 'bg-[hsl(270,50%,8%)]', accent: 'bg-[hsl(330,100%,60%)]', text: 'bg-[hsl(180,100%,50%)]' },
+    'soft-pastel': { bg: 'bg-[hsl(340,80%,97%)]', card: 'bg-white', accent: 'bg-[hsl(340,80%,70%)]', text: 'bg-[hsl(280,70%,85%)]' },
+    terminal: { bg: 'bg-[hsl(120,10%,5%)]', card: 'bg-[hsl(120,10%,8%)]', accent: 'bg-[hsl(120,100%,50%)]', text: 'bg-[hsl(120,50%,40%)]' },
+    'social-feed': { bg: 'bg-[hsl(220,15%,95%)]', card: 'bg-white', accent: 'bg-[hsl(220,90%,55%)]', text: 'bg-gray-300' },
+    'knowledge-base': { bg: 'bg-[hsl(0,0%,98%)]', card: 'bg-white', accent: 'bg-[hsl(27,98%,47%)]', text: 'bg-gray-200' },
+    'luxury-premium': { bg: 'bg-[hsl(30,10%,8%)]', card: 'bg-[hsl(30,10%,12%)]', accent: 'bg-[hsl(45,100%,50%)]', text: 'bg-[hsl(40,20%,40%)]' },
+    'gen-z': { bg: 'bg-[hsl(280,80%,8%)]', card: 'bg-[hsl(280,60%,15%)]', accent: 'bg-[hsl(60,100%,60%)]', text: 'bg-[hsl(330,100%,65%)]' },
+    corporate: { bg: 'bg-[hsl(220,20%,97%)]', card: 'bg-white', accent: 'bg-[hsl(220,70%,45%)]', text: 'bg-[hsl(220,15%,75%)]' },
+    magazine: { bg: 'bg-[hsl(0,0%,98%)]', card: 'bg-white', accent: 'bg-[hsl(0,85%,50%)]', text: 'bg-gray-300' },
+    'retro-pixel': { bg: 'bg-[hsl(260,50%,12%)]', card: 'bg-[hsl(260,40%,18%)]', accent: 'bg-[hsl(120,100%,50%)]', text: 'bg-[hsl(280,80%,60%)]' },
+    'nature-calm': { bg: 'bg-[hsl(120,30%,96%)]', card: 'bg-white', accent: 'bg-[hsl(140,60%,40%)]', text: 'bg-[hsl(120,30%,80%)]' },
+    'power-user': { bg: 'bg-[hsl(220,20%,10%)]', card: 'bg-[hsl(220,20%,14%)]', accent: 'bg-[hsl(190,90%,50%)]', text: 'bg-[hsl(200,15%,45%)]' },
+    'motion-driven': { bg: 'bg-[hsl(270,60%,6%)]', card: 'bg-[hsl(270,50%,12%)]', accent: 'bg-[hsl(270,90%,65%)]', text: 'bg-[hsl(300,80%,55%)]' },
   };
 
   const style = previewStyles[theme];
 
   return (
-    <div className={`w-full h-full ${style.bg} p-1`}>
-      <div className={`h-2 w-8 ${style.accent} rounded-sm mb-1`} />
-      <div className={`h-1.5 w-12 ${style.text} rounded-sm mb-0.5`} />
-      <div className={`h-1.5 w-10 ${style.text} rounded-sm`} />
+    <div className={`w-full h-full ${style.bg} p-2 flex flex-col gap-1`}>
+      {/* Header bar */}
+      <div className="flex items-center gap-1">
+        <div className={`h-1.5 w-6 ${style.accent} rounded-sm`} />
+        <div className="flex-1" />
+        <div className={`h-1.5 w-1.5 ${style.text} rounded-full opacity-50`} />
+        <div className={`h-1.5 w-1.5 ${style.text} rounded-full opacity-50`} />
+      </div>
+      {/* Content area */}
+      <div className="flex gap-1 flex-1">
+        {/* Sidebar */}
+        <div className={`w-4 ${style.card} rounded-sm p-0.5 space-y-0.5`}>
+          <div className={`h-1 w-full ${style.text} rounded-sm opacity-30`} />
+          <div className={`h-1 w-full ${style.accent} rounded-sm opacity-60`} />
+          <div className={`h-1 w-full ${style.text} rounded-sm opacity-30`} />
+        </div>
+        {/* Main content */}
+        <div className="flex-1 space-y-1">
+          <div className={`h-5 ${style.card} rounded-sm p-1`}>
+            <div className={`h-1 w-8 ${style.accent} rounded-sm`} />
+            <div className={`h-1 w-10 ${style.text} rounded-sm mt-0.5 opacity-40`} />
+          </div>
+          <div className={`h-4 ${style.card} rounded-sm`} />
+        </div>
+      </div>
     </div>
   );
 }
 
 function FestivalPreview({ festival }: { festival: FestivalTheme }) {
-  const previewBg: Record<FestivalTheme, string> = {
-    none: 'bg-background',
-    christmas: 'bg-gradient-to-br from-green-900 to-red-900',
-    'new-year': 'bg-gradient-to-br from-purple-900 to-blue-900',
-    halloween: 'bg-gradient-to-br from-orange-900 to-purple-950',
-    thingyan: 'bg-gradient-to-br from-cyan-700 to-blue-900',
-    thadingyut: 'bg-gradient-to-br from-yellow-700 to-orange-900',
-    tazaungdaing: 'bg-gradient-to-br from-orange-700 to-red-900',
+  const previewConfig: Record<FestivalTheme, { bg: string; emojis: string[] }> = {
+    none: { bg: 'bg-muted', emojis: [] },
+    christmas: { bg: 'bg-gradient-to-br from-red-800 via-green-800 to-red-900', emojis: ['🎄', '❄️', '🎁', '⭐'] },
+    'new-year': { bg: 'bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900', emojis: ['🎆', '🎉', '✨', '🥂'] },
+    halloween: { bg: 'bg-gradient-to-br from-orange-900 via-purple-950 to-black', emojis: ['🎃', '👻', '🦇', '🕷️'] },
+    thingyan: { bg: 'bg-gradient-to-br from-cyan-500 via-blue-600 to-cyan-700', emojis: ['💧', '🌸', '💦', '🎊'] },
+    thadingyut: { bg: 'bg-gradient-to-br from-yellow-600 via-orange-700 to-amber-800', emojis: ['🪔', '✨', '🕯️', '🙏'] },
+    tazaungdaing: { bg: 'bg-gradient-to-br from-orange-600 via-red-700 to-orange-800', emojis: ['🎈', '🔥', '🎊', '🎉'] },
   };
 
-  const festivalEmojis: Record<FestivalTheme, string[]> = {
-    none: [],
-    christmas: ['🎄', '❄️', '🎁'],
-    'new-year': ['🎆', '🎉', '✨'],
-    halloween: ['🎃', '👻', '🦇'],
-    thingyan: ['💧', '🌸', '💦'],
-    thadingyut: ['🪔', '✨', '🕯️'],
-    tazaungdaing: ['🎈', '🔥', '🎊'],
-  };
+  const config = previewConfig[festival];
 
   return (
-    <div className={`w-full h-full ${previewBg[festival]} flex items-center justify-center gap-1`}>
-      {festivalEmojis[festival].map((emoji, i) => (
-        <span key={i} className="text-xs">{emoji}</span>
-      ))}
+    <div className={`w-full h-full ${config.bg} flex items-center justify-center p-2`}>
+      <div className="grid grid-cols-2 gap-1">
+        {config.emojis.map((emoji, i) => (
+          <span key={i} className="text-base animate-pulse" style={{ animationDelay: `${i * 0.2}s` }}>
+            {emoji}
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
