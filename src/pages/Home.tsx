@@ -86,7 +86,7 @@ export default function HomePage() {
             </div>
 
             {/* Threads List */}
-            <div className="space-y-4">
+            <div className="space-y-3">
               {threadsLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <Card key={i} className="animate-pulse">

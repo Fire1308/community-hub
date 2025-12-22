@@ -15,6 +15,7 @@ const PAGE_SIZE = 10;
 export default function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const initialQuery = searchParams.get('q') || '';
+  const tagSlug = searchParams.get('tag') || '';
   const [query, setQuery] = useState(initialQuery);
   const [debouncedQuery, setDebouncedQuery] = useState(initialQuery);
   const [searchType, setSearchType] = useState<'all' | 'threads' | 'posts' | 'users'>('all');
@@ -32,7 +33,10 @@ export default function SearchPage() {
     return () => clearTimeout(timer);
   }, [query, setSearchParams]);
 
-  const { data: results, isLoading } = useSearch(debouncedQuery, { type: searchType });
+  const { data: results, isLoading } = useSearch(debouncedQuery || tagSlug, { 
+    type: tagSlug ? 'threads' : searchType,
+    tagSlug: tagSlug || undefined
+  });
 
   // Paginate results client-side
   const paginatedThreads = results?.threads?.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE) || [];
@@ -45,7 +49,9 @@ export default function SearchPage() {
   return (
     <Layout>
       <div className="container py-6 md:py-8">
-        <h1 className="text-3xl font-bold mb-6">Search</h1>
+        <h1 className="text-3xl font-bold mb-6">
+          {tagSlug ? `Tag: #${tagSlug}` : 'Search'}
+        </h1>
 
         {/* Search Input */}
         <div className="relative mb-6">
@@ -79,7 +85,7 @@ export default function SearchPage() {
               </Card>
             ))}
           </div>
-        ) : !debouncedQuery ? (
+        ) : !debouncedQuery && !tagSlug ? (
           <Card>
             <CardContent className="p-12 text-center text-muted-foreground">
               <SearchIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
