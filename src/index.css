@@ -1,6 +1,9 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Lora:wght@400;500;600;700&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -13,114 +16,70 @@ All colors MUST be HSL.
   :root {
     --background: 209 40% 96%;
     --foreground: 222 47% 11%;
-
     --card: 210 40% 98%;
     --card-foreground: 222 47% 11%;
-
     --popover: 214 31% 91%;
     --popover-foreground: 222 47% 11%;
-
     --primary: 200 98% 39%;
     --primary-foreground: 204 100% 97%;
-
     --secondary: 215 24% 26%;
     --secondary-foreground: 210 40% 98%;
-
     --muted: 215 20% 65%;
     --muted-foreground: 222 47% 11%;
-
     --accent: 210 40% 98%;
     --accent-foreground: 215 19% 34%;
-
     --destructive: 0 72% 50%;
     --destructive-foreground: 0 85% 97%;
-
     --border: 212 26% 83%;
     --input: 212 26% 83%;
     --ring: 200 98% 39%;
-
     --radius: 0.5rem;
-
     --sidebar-background: 0 0% 98%;
-
     --sidebar-foreground: 222 47% 11%;
-
     --sidebar-primary: 200 98% 39%;
-
     --sidebar-primary-foreground: 204 100% 97%;
-
     --sidebar-accent: 215 24% 26%;
-
     --sidebar-accent-foreground: 210 40% 98%;
-
     --sidebar-border: 212 26% 83%;
-
     --sidebar-ring: 200 98% 39%;
-
     --chart-1: 198 93% 59%;
-
     --chart-2: 213 93% 67%;
-
     --chart-3: 215 20% 65%;
-
     --chart-4: 215 16% 46%;
-
     --chart-5: 215 19% 34%;
-
     --sidebar: 210 40% 98%;
-
     --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
-
     --font-serif: 'Lora', ui-serif, Georgia, Cambria, 'Times New Roman', Times, serif;
-
     --font-mono: 'Space Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
-
     --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
-
     --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
-
     --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
-
     --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
-
     --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 2px 4px -1px hsl(0 0% 0% / 0.1);
-
     --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 4px 6px -1px hsl(0 0% 0% / 0.1);
-
     --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 8px 10px -1px hsl(0 0% 0% / 0.1);
-
     --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
-
     --tracking-normal: 0em;
-
     --spacing: 0.25rem;
   }
 
   .dark {
     --background: 222 47% 11%;
     --foreground: 210 40% 98%;
-
     --card: 217 32% 17%;
     --card-foreground: 210 40% 98%;
-
     --popover: 215 24% 26%;
     --popover-foreground: 210 40% 98%;
-
     --primary: 198 93% 59%;
     --primary-foreground: 204 80% 15%;
-
     --secondary: 212 26% 83%;
     --secondary-foreground: 228 84% 4%;
-
     --muted: 215 16% 46%;
     --muted-foreground: 210 40% 98%;
-
     --accent: 228 84% 4%;
     --accent-foreground: 215 20% 65%;
-
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 85% 97%;
-
     --border: 215 19% 34%;
     --input: 215 19% 34%;
     --ring: 198 93% 59%;
@@ -147,6 +106,480 @@ All colors MUST be HSL.
     --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 8px 10px -1px hsl(0 0% 0% / 0.1);
     --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
   }
+
+  /* ========================================
+     THEME 1: MINIMAL EDITORIAL
+     White space, typography focused, Blog/Medium feeling
+     ======================================== */
+  .theme-minimal-editorial {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 9%;
+    --primary: 0 0% 9%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 0 0% 96%;
+    --accent-foreground: 0 0% 9%;
+    --border: 0 0% 90%;
+    --input: 0 0% 90%;
+    --ring: 0 0% 9%;
+    --radius: 0.25rem;
+  }
+  .theme-minimal-editorial body { font-family: 'Lora', serif; }
+
+  /* ========================================
+     THEME 2: DARK GLASSMORPHISM
+     Frosted glass cards, blur + glow, Premium SaaS vibe
+     ======================================== */
+  .theme-dark-glass {
+    --background: 222 47% 6%;
+    --foreground: 210 40% 98%;
+    --card: 220 30% 12%;
+    --card-foreground: 210 40% 98%;
+    --popover: 220 30% 15%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 30% 20%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 220 20% 25%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 217 91% 60%;
+    --accent-foreground: 0 0% 100%;
+    --border: 220 20% 20%;
+    --input: 220 20% 18%;
+    --ring: 217 91% 60%;
+    --radius: 1rem;
+  }
+
+  /* ========================================
+     THEME 3: NEON CYBERPUNK
+     Neon gradients, glow borders, Hacker/gamer community
+     ======================================== */
+  .theme-neon-cyberpunk {
+    --background: 270 50% 5%;
+    --foreground: 180 100% 90%;
+    --card: 270 50% 8%;
+    --card-foreground: 180 100% 90%;
+    --popover: 270 50% 10%;
+    --popover-foreground: 180 100% 90%;
+    --primary: 330 100% 60%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 180 100% 50%;
+    --secondary-foreground: 0 0% 0%;
+    --muted: 270 30% 20%;
+    --muted-foreground: 180 50% 60%;
+    --accent: 280 100% 60%;
+    --accent-foreground: 0 0% 100%;
+    --border: 270 50% 20%;
+    --input: 270 50% 15%;
+    --ring: 330 100% 60%;
+    --radius: 0rem;
+  }
+  .theme-neon-cyberpunk body { font-family: 'Orbitron', sans-serif; }
+
+  /* ========================================
+     THEME 4: SOFT PASTEL
+     Pastel colors, rounded UI, Friendly/casual community
+     ======================================== */
+  .theme-soft-pastel {
+    --background: 340 80% 97%;
+    --foreground: 340 30% 25%;
+    --card: 0 0% 100%;
+    --card-foreground: 340 30% 25%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 340 30% 25%;
+    --primary: 340 80% 70%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 200 80% 85%;
+    --secondary-foreground: 200 50% 25%;
+    --muted: 340 40% 92%;
+    --muted-foreground: 340 20% 50%;
+    --accent: 280 70% 85%;
+    --accent-foreground: 280 50% 25%;
+    --border: 340 40% 88%;
+    --input: 340 40% 90%;
+    --ring: 340 80% 70%;
+    --radius: 1.5rem;
+  }
+
+  /* ========================================
+     THEME 5: DEVELOPER TERMINAL
+     Monospace font, CLI accent, Dev/engineering focus
+     ======================================== */
+  .theme-terminal {
+    --background: 120 10% 5%;
+    --foreground: 120 100% 70%;
+    --card: 120 10% 8%;
+    --card-foreground: 120 100% 70%;
+    --popover: 120 10% 10%;
+    --popover-foreground: 120 100% 70%;
+    --primary: 120 100% 50%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 120 30% 15%;
+    --secondary-foreground: 120 100% 70%;
+    --muted: 120 10% 15%;
+    --muted-foreground: 120 50% 50%;
+    --accent: 60 100% 50%;
+    --accent-foreground: 0 0% 0%;
+    --border: 120 30% 20%;
+    --input: 120 10% 12%;
+    --ring: 120 100% 50%;
+    --radius: 0rem;
+  }
+  .theme-terminal body { font-family: 'Space Mono', monospace; }
+
+  /* ========================================
+     THEME 6: SOCIAL FEED (Facebook/Reddit style)
+     Card-based, infinite scroll, Mobile-first UX
+     ======================================== */
+  .theme-social-feed {
+    --background: 220 15% 95%;
+    --foreground: 220 30% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 30% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 30% 15%;
+    --primary: 220 90% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 15% 90%;
+    --secondary-foreground: 220 30% 20%;
+    --muted: 220 15% 92%;
+    --muted-foreground: 220 15% 45%;
+    --accent: 220 90% 55%;
+    --accent-foreground: 0 0% 100%;
+    --border: 220 15% 88%;
+    --input: 220 15% 92%;
+    --ring: 220 90% 55%;
+    --radius: 0.5rem;
+  }
+
+  /* ========================================
+     THEME 7: KNOWLEDGE BASE / Q&A
+     StackOverflow-like, Solved status highlight, Info density high
+     ======================================== */
+  .theme-knowledge-base {
+    --background: 0 0% 98%;
+    --foreground: 0 0% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 15%;
+    --primary: 27 98% 47%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 45 100% 95%;
+    --secondary-foreground: 45 70% 30%;
+    --muted: 0 0% 95%;
+    --muted-foreground: 0 0% 45%;
+    --accent: 140 60% 45%;
+    --accent-foreground: 0 0% 100%;
+    --border: 0 0% 88%;
+    --input: 0 0% 92%;
+    --ring: 27 98% 47%;
+    --radius: 0.25rem;
+  }
+
+  /* ========================================
+     THEME 8: LUXURY PREMIUM
+     Dark + gold accents, Serif + sans-serif mix, Exclusive club feeling
+     ======================================== */
+  .theme-luxury-premium {
+    --background: 30 10% 8%;
+    --foreground: 40 30% 90%;
+    --card: 30 10% 12%;
+    --card-foreground: 40 30% 90%;
+    --popover: 30 10% 15%;
+    --popover-foreground: 40 30% 90%;
+    --primary: 45 100% 50%;
+    --primary-foreground: 30 30% 10%;
+    --secondary: 30 10% 20%;
+    --secondary-foreground: 40 30% 85%;
+    --muted: 30 10% 18%;
+    --muted-foreground: 40 20% 55%;
+    --accent: 45 100% 50%;
+    --accent-foreground: 30 30% 10%;
+    --border: 30 15% 20%;
+    --input: 30 10% 15%;
+    --ring: 45 100% 50%;
+    --radius: 0rem;
+  }
+  .theme-luxury-premium body { font-family: 'Playfair Display', serif; }
+
+  /* ========================================
+     THEME 9: YOUTH / GEN-Z
+     Bold typography, Stickers/emojis, Micro-animations, Fun & expressive
+     ======================================== */
+  .theme-gen-z {
+    --background: 280 80% 8%;
+    --foreground: 60 100% 95%;
+    --card: 280 60% 15%;
+    --card-foreground: 60 100% 95%;
+    --popover: 280 60% 18%;
+    --popover-foreground: 60 100% 95%;
+    --primary: 60 100% 60%;
+    --primary-foreground: 280 80% 10%;
+    --secondary: 180 100% 50%;
+    --secondary-foreground: 0 0% 0%;
+    --muted: 280 40% 25%;
+    --muted-foreground: 280 30% 70%;
+    --accent: 330 100% 65%;
+    --accent-foreground: 0 0% 100%;
+    --border: 280 50% 25%;
+    --input: 280 50% 20%;
+    --ring: 60 100% 60%;
+    --radius: 1.5rem;
+  }
+
+  /* ========================================
+     THEME 10: CORPORATE PROFESSIONAL
+     Blue/gray palette, Clean grid, Formal & trust-based
+     ======================================== */
+  .theme-corporate {
+    --background: 220 20% 97%;
+    --foreground: 220 40% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 40% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 40% 15%;
+    --primary: 220 70% 45%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 20% 92%;
+    --secondary-foreground: 220 40% 20%;
+    --muted: 220 15% 93%;
+    --muted-foreground: 220 20% 45%;
+    --accent: 220 70% 45%;
+    --accent-foreground: 0 0% 100%;
+    --border: 220 15% 88%;
+    --input: 220 15% 92%;
+    --ring: 220 70% 45%;
+    --radius: 0.375rem;
+  }
+
+  /* ========================================
+     THEME 11: MAGAZINE / NEWS
+     Grid-based layout, Large cover images, Headlines-first
+     ======================================== */
+  .theme-magazine {
+    --background: 0 0% 98%;
+    --foreground: 0 0% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 10%;
+    --primary: 0 85% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 94%;
+    --secondary-foreground: 0 0% 15%;
+    --muted: 0 0% 95%;
+    --muted-foreground: 0 0% 40%;
+    --accent: 0 85% 50%;
+    --accent-foreground: 0 0% 100%;
+    --border: 0 0% 88%;
+    --input: 0 0% 92%;
+    --ring: 0 85% 50%;
+    --radius: 0rem;
+  }
+  .theme-magazine body { font-family: 'Playfair Display', serif; }
+
+  /* ========================================
+     THEME 12: RETRO PIXEL
+     Pixel fonts/icons, Nostalgic, Indie/gaming communities
+     ======================================== */
+  .theme-retro-pixel {
+    --background: 260 50% 12%;
+    --foreground: 120 100% 70%;
+    --card: 260 40% 18%;
+    --card-foreground: 120 100% 70%;
+    --popover: 260 40% 22%;
+    --popover-foreground: 120 100% 70%;
+    --primary: 120 100% 50%;
+    --primary-foreground: 260 50% 10%;
+    --secondary: 280 80% 60%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 260 30% 25%;
+    --muted-foreground: 120 50% 50%;
+    --accent: 45 100% 55%;
+    --accent-foreground: 0 0% 0%;
+    --border: 260 40% 30%;
+    --input: 260 40% 20%;
+    --ring: 120 100% 50%;
+    --radius: 0rem;
+  }
+  .theme-retro-pixel body { font-family: 'Press Start 2P', cursive; font-size: 12px; }
+
+  /* ========================================
+     THEME 13: NATURE / CALM
+     Green/earth tones, Calm animations, Wellness/mindfulness forum
+     ======================================== */
+  .theme-nature-calm {
+    --background: 120 30% 96%;
+    --foreground: 120 30% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 120 30% 15%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 120 30% 15%;
+    --primary: 140 60% 40%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 120 30% 90%;
+    --secondary-foreground: 120 30% 20%;
+    --muted: 120 20% 92%;
+    --muted-foreground: 120 20% 45%;
+    --accent: 80 50% 50%;
+    --accent-foreground: 0 0% 100%;
+    --border: 120 20% 85%;
+    --input: 120 20% 90%;
+    --ring: 140 60% 40%;
+    --radius: 1rem;
+  }
+
+  /* ========================================
+     THEME 14: POWER USER DENSE
+     Compact layout, Keyboard shortcuts, Old-school forum evolution
+     ======================================== */
+  .theme-power-user {
+    --background: 220 20% 10%;
+    --foreground: 200 20% 85%;
+    --card: 220 20% 14%;
+    --card-foreground: 200 20% 85%;
+    --popover: 220 20% 18%;
+    --popover-foreground: 200 20% 85%;
+    --primary: 190 90% 50%;
+    --primary-foreground: 220 20% 10%;
+    --secondary: 220 20% 20%;
+    --secondary-foreground: 200 20% 80%;
+    --muted: 220 15% 20%;
+    --muted-foreground: 200 15% 55%;
+    --accent: 190 90% 50%;
+    --accent-foreground: 220 20% 10%;
+    --border: 220 15% 22%;
+    --input: 220 15% 16%;
+    --ring: 190 90% 50%;
+    --radius: 0.125rem;
+  }
+  .theme-power-user body { font-family: 'Space Mono', monospace; font-size: 13px; }
+
+  /* ========================================
+     THEME 15: MOTION DRIVEN
+     Motion-heavy, Scroll animations, Unique transitions
+     ======================================== */
+  .theme-motion-driven {
+    --background: 270 60% 6%;
+    --foreground: 270 20% 95%;
+    --card: 270 50% 12%;
+    --card-foreground: 270 20% 95%;
+    --popover: 270 50% 15%;
+    --popover-foreground: 270 20% 95%;
+    --primary: 270 90% 65%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 300 80% 55%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 270 30% 20%;
+    --muted-foreground: 270 20% 60%;
+    --accent: 200 100% 60%;
+    --accent-foreground: 0 0% 100%;
+    --border: 270 40% 20%;
+    --input: 270 40% 15%;
+    --ring: 270 90% 65%;
+    --radius: 1rem;
+  }
+}
+
+/* ========================================
+   THEME-SPECIFIC STYLES & EFFECTS
+   ======================================== */
+
+/* Dark Glass - Glassmorphism effect */
+.theme-dark-glass .card,
+.theme-dark-glass [class*="Card"] {
+  backdrop-filter: blur(12px);
+  background: hsl(var(--card) / 0.7);
+  border: 1px solid hsl(var(--border) / 0.3);
+}
+
+/* Neon Cyberpunk - Glow effects */
+.theme-neon-cyberpunk .card,
+.theme-neon-cyberpunk [class*="Card"] {
+  border: 1px solid hsl(var(--primary) / 0.5);
+  box-shadow: 0 0 20px hsl(var(--primary) / 0.2), inset 0 0 20px hsl(var(--primary) / 0.05);
+}
+.theme-neon-cyberpunk button[class*="primary"] {
+  box-shadow: 0 0 20px hsl(var(--primary) / 0.5);
+}
+
+/* Terminal - Scanline effect */
+.theme-terminal::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    hsl(120 100% 50% / 0.03) 2px,
+    hsl(120 100% 50% / 0.03) 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* Luxury Premium - Gold shimmer on primary elements */
+.theme-luxury-premium button[class*="primary"],
+.theme-luxury-premium [class*="primary"] {
+  background: linear-gradient(135deg, hsl(45 100% 45%) 0%, hsl(45 100% 55%) 50%, hsl(45 100% 45%) 100%);
+}
+
+/* Gen-Z - Gradient backgrounds */
+.theme-gen-z .card,
+.theme-gen-z [class*="Card"] {
+  background: linear-gradient(135deg, hsl(var(--card)) 0%, hsl(280 60% 18%) 100%);
+}
+
+/* Motion Driven - Transition enhancements */
+.theme-motion-driven * {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.theme-motion-driven .card:hover,
+.theme-motion-driven [class*="Card"]:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 40px hsl(var(--primary) / 0.2);
+}
+
+/* Retro Pixel - Pixelated shadows */
+.theme-retro-pixel .card,
+.theme-retro-pixel [class*="Card"] {
+  box-shadow: 4px 4px 0px hsl(120 100% 50%);
+  border: 2px solid hsl(120 100% 50%);
+}
+.theme-retro-pixel button {
+  box-shadow: 3px 3px 0px hsl(120 100% 40%);
+}
+.theme-retro-pixel button:active {
+  box-shadow: 1px 1px 0px hsl(120 100% 40%);
+  transform: translate(2px, 2px);
+}
+
+/* Nature Calm - Soft shadows */
+.theme-nature-calm .card,
+.theme-nature-calm [class*="Card"] {
+  box-shadow: 0 4px 20px hsl(140 60% 40% / 0.1);
+}
+
+/* Power User - Compact spacing */
+.theme-power-user * {
+  line-height: 1.4;
+}
+.theme-power-user .card,
+.theme-power-user [class*="Card"] {
+  padding: 0.5rem;
 }
 
 @layer base {
@@ -157,4 +590,37 @@ All colors MUST be HSL.
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* ========================================
+   ANIMATION UTILITIES
+   ======================================== */
+@layer utilities {
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+  
+  .animate-glow {
+    animation: glow 2s ease-in-out infinite alternate;
+  }
+  
+  .animate-shake {
+    animation: shake 0.5s ease-in-out;
+  }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes glow {
+  from { box-shadow: 0 0 5px hsl(var(--primary) / 0.5); }
+  to { box-shadow: 0 0 20px hsl(var(--primary) / 0.8); }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
 }
