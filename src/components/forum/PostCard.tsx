@@ -1,10 +1,10 @@
-import { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { ThumbsUp, ThumbsDown, Heart, MessageSquare, MoreHorizontal, Flag, Edit, Trash, CheckCircle, Quote } from 'lucide-react';
+import { ThumbsUp, Heart, MessageSquare, MoreHorizontal, Flag, Edit, Trash, CheckCircle, Quote } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { RoleBadge } from '@/components/ui/role-badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePostReactions, useAddReaction } from '@/hooks/usePosts';
+import { useUserRole } from '@/hooks/useUserRoles';
 import type { Post } from '@/lib/supabase-types';
 import { Link } from 'react-router-dom';
 
@@ -39,6 +40,7 @@ export function PostCard({
   canMarkSolution = false,
 }: PostCardProps) {
   const { user, role } = useAuth();
+  const { data: authorRole } = useUserRole(post.author_id);
   const { data: reactions = [] } = usePostReactions(post.id);
   const addReaction = useAddReaction();
 
@@ -77,9 +79,12 @@ export function PostCard({
             {/* Header */}
             <div className="flex items-start justify-between gap-2 mb-3">
               <div>
-                <Link to={`/profile/${post.author?.username}`} className="font-semibold hover:text-primary transition-colors">
-                  {post.author?.display_name || post.author?.username}
-                </Link>
+                <div className="flex items-center gap-2">
+                  <Link to={`/profile/${post.author?.username}`} className="font-semibold hover:text-primary transition-colors">
+                    {post.author?.display_name || post.author?.username}
+                  </Link>
+                  <RoleBadge role={authorRole} />
+                </div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <span>@{post.author?.username}</span>
                   <span>•</span>

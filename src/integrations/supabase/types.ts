@@ -785,6 +785,38 @@ export type Database = {
         }
         Relationships: []
       }
+      thread_follows: {
+        Row: {
+          created_at: string | null
+          id: string
+          notify_on_reply: boolean | null
+          thread_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          notify_on_reply?: boolean | null
+          thread_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          notify_on_reply?: boolean | null
+          thread_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "thread_follows_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       thread_tags: {
         Row: {
           created_at: string
@@ -999,6 +1031,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      increment_thread_view: {
+        Args: { p_thread_id: string }
+        Returns: undefined
       }
       is_admin_or_mod: { Args: { _user_id: string }; Returns: boolean }
       is_user_banned: { Args: { _user_id: string }; Returns: boolean }

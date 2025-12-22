@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Bell, Search, Menu, X, Sun, Moon, User, Settings, LogOut, MessageSquare, Bookmark, Shield } from 'lucide-react';
+import { Bell, Search, Sun, Moon, User, Settings, LogOut, MessageSquare, Bookmark, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -22,7 +22,6 @@ export function Header() {
   const { theme, toggleTheme } = useTheme();
   const { data: unreadNotifications = 0 } = useUnreadNotificationCount();
   const { data: unreadMessages = 0 } = useUnreadMessagesCount();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
 
@@ -40,30 +39,12 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
-      <div className="container flex h-16 items-center justify-between gap-4">
+      <div className="flex h-14 items-center justify-between gap-4 px-4">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2 font-bold text-xl text-primary">
           <MessageSquare className="h-6 w-6" />
           <span className="hidden sm:inline">Forum</span>
         </Link>
-
-        {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center gap-6">
-          <Link to="/" className="text-sm font-medium text-foreground/80 hover:text-foreground transition-colors">
-            Home
-          </Link>
-          <Link to="/categories" className="text-sm font-medium text-foreground/80 hover:text-foreground transition-colors">
-            Categories
-          </Link>
-          <Link to="/members" className="text-sm font-medium text-foreground/80 hover:text-foreground transition-colors">
-            Members
-          </Link>
-          {(role === 'admin' || role === 'moderator') && (
-            <Link to="/admin" className="text-sm font-medium text-foreground/80 hover:text-foreground transition-colors">
-              Admin
-            </Link>
-          )}
-        </nav>
 
         {/* Search Bar */}
         <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-md">
@@ -82,7 +63,7 @@ export function Header() {
         {/* Right Actions */}
         <div className="flex items-center gap-2">
           {/* Theme Toggle */}
-          <Button variant="ghost" size="icon" onClick={toggleTheme} className="hidden sm:flex">
+          <Button variant="ghost" size="icon" onClick={toggleTheme}>
             {theme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
           </Button>
 
@@ -176,56 +157,8 @@ export function Header() {
               </Button>
             </div>
           )}
-
-          {/* Mobile Menu Toggle */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className="md:hidden"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          >
-            {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </Button>
         </div>
       </div>
-
-      {/* Mobile Menu */}
-      {mobileMenuOpen && (
-        <div className="md:hidden border-t border-border bg-card p-4 space-y-4">
-          <form onSubmit={handleSearch}>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10"
-              />
-            </div>
-          </form>
-          <nav className="flex flex-col gap-2">
-            <Link to="/" className="p-2 rounded-md hover:bg-accent" onClick={() => setMobileMenuOpen(false)}>
-              Home
-            </Link>
-            <Link to="/categories" className="p-2 rounded-md hover:bg-accent" onClick={() => setMobileMenuOpen(false)}>
-              Categories
-            </Link>
-            <Link to="/members" className="p-2 rounded-md hover:bg-accent" onClick={() => setMobileMenuOpen(false)}>
-              Members
-            </Link>
-            {(role === 'admin' || role === 'moderator') && (
-              <Link to="/admin" className="p-2 rounded-md hover:bg-accent" onClick={() => setMobileMenuOpen(false)}>
-                Admin
-              </Link>
-            )}
-          </nav>
-          <Button variant="outline" onClick={toggleTheme} className="w-full justify-start gap-2">
-            {theme === 'light' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
-            {theme === 'light' ? 'Dark Mode' : 'Light Mode'}
-          </Button>
-        </div>
-      )}
     </header>
   );
 }
