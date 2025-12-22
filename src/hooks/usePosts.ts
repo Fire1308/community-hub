@@ -100,7 +100,7 @@ export function useCreatePost() {
 
       // Send notification to thread author if it's not their own post
       if (thread && thread.author_id !== user.id) {
-        await supabase.from('notifications').insert({
+        const notifResult = await supabase.from('notifications').insert({
           user_id: thread.author_id,
           type: 'reply',
           title: 'New reply to your thread',
@@ -109,6 +109,10 @@ export function useCreatePost() {
           is_read: false,
           data: { thread_id: thread.id, post_id: post.id },
         });
+        // Log errors but don't fail the post creation
+        if (notifResult.error) {
+          console.error('Failed to send reply notification:', notifResult.error);
+        }
       }
 
       // Check for mentions in content and notify mentioned users
@@ -124,7 +128,7 @@ export function useCreatePost() {
         if (mentionedUsers) {
           for (const mentionedUser of mentionedUsers) {
             if (mentionedUser.id !== user.id) {
-              await supabase.from('notifications').insert({
+              const mentionResult = await supabase.from('notifications').insert({
                 user_id: mentionedUser.id,
                 type: 'mention',
                 title: 'You were mentioned',
@@ -133,6 +137,9 @@ export function useCreatePost() {
                 is_read: false,
                 data: { thread_id: input.thread_id, post_id: post.id },
               });
+              if (mentionResult.error) {
+                console.error('Failed to send mention notification:', mentionResult.error);
+              }
             }
           }
         }
@@ -150,7 +157,7 @@ export function useCreatePost() {
         for (const follower of followers) {
           // Don't notify thread author twice
           if (follower.user_id !== thread.author_id) {
-            await supabase.from('notifications').insert({
+            const followResult = await supabase.from('notifications').insert({
               user_id: follower.user_id,
               type: 'reply',
               title: 'New reply in followed thread',
@@ -159,6 +166,9 @@ export function useCreatePost() {
               is_read: false,
               data: { thread_id: thread.id, post_id: post.id },
             });
+            if (followResult.error) {
+              console.error('Failed to send follow notification:', followResult.error);
+            }
           }
         }
       }
