@@ -84,9 +84,11 @@ export default function Admin() {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [banReason, setBanReason] = useState('');
   const [banType, setBanType] = useState<'temporary' | 'permanent'>('temporary');
+  const [banDuration, setBanDuration] = useState<number>(7); // days for temporary ban
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<{ id: string; name: string; description: string; slug: string } | null>(null);
   const [newCategory, setNewCategory] = useState({ name: '', description: '', slug: '', icon: '', color: '' });
+  const [reportReasonFilter, setReportReasonFilter] = useState<string>('all');
 
   // App settings state
   const { data: appSettings } = useAppSettings();
@@ -132,14 +134,20 @@ export default function Admin() {
   const handleBanUser = async () => {
     if (!selectedUserId) return;
     try {
+      const expiresAt = banType === 'temporary'
+        ? new Date(Date.now() + banDuration * 24 * 60 * 60 * 1000).toISOString()
+        : undefined;
+      
       await banUser.mutateAsync({
         userId: selectedUserId,
         banType,
         reason: banReason,
+        expiresAt,
       });
       toast({ title: 'User banned successfully' });
       setBanDialogOpen(false);
       setBanReason('');
+      setBanDuration(7);
       setSelectedUserId(null);
     } catch {
       toast({ title: 'Failed to ban user', variant: 'destructive' });
@@ -407,7 +415,16 @@ export default function Admin() {
                             </TableCell>
                             <TableCell>
                               {activeBan ? (
-                                <Badge variant="destructive">Banned</Badge>
+                                <div className="flex flex-col gap-0.5">
+                                  <Badge variant="destructive">Banned</Badge>
+                                  {activeBan.expires_at ? (
+                                    <span className="text-xs text-muted-foreground">
+                                      Expires {formatDistanceToNow(new Date(activeBan.expires_at), { addSuffix: true })}
+                                    </span>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">Permanent</span>
+                                  )}
+                                </div>
                               ) : (
                                 <Badge variant="outline">Active</Badge>
                               )}
@@ -477,6 +494,22 @@ export default function Admin() {
                       </SelectContent>
                     </Select>
                   </div>
+                  {banType === 'temporary' && (
+                    <div className="space-y-2">
+                      <Label>Duration (days)</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={365}
+                        value={banDuration}
+                        onChange={(e) => setBanDuration(parseInt(e.target.value) || 1)}
+                        placeholder="7"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Ban expires: {new Date(Date.now() + banDuration * 24 * 60 * 60 * 1000).toLocaleDateString()}
+                      </p>
+                    </div>
+                  )}
                   <div className="space-y-2">
                     <Label>Reason</Label>
                     <Textarea
@@ -497,65 +530,152 @@ export default function Admin() {
           {/* Reports Tab */}
           <TabsContent value="reports">
             <Card>
-              <CardHeader>
-                <CardTitle>Moderation Queue</CardTitle>
-                <CardDescription>Review reported content</CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Moderation Queue</CardTitle>
+                  <CardDescription>Review reported content</CardDescription>
+                </div>
+                <Select value={reportReasonFilter} onValueChange={setReportReasonFilter}>
+                  <SelectTrigger className="w-40">
+                    <SelectValue placeholder="Filter" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Reasons</SelectItem>
+                    <SelectItem value="spam">Spam</SelectItem>
+                    <SelectItem value="harassment">Harassment</SelectItem>
+                    <SelectItem value="inappropriate">Inappropriate</SelectItem>
+                    <SelectItem value="misinformation">Misinformation</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
               </CardHeader>
               <CardContent>
-                {reports && reports.length > 0 ? (
-                  <div className="space-y-4">
-                    {reports.map((report) => (
-                      <Card key={report.id}>
-                        <CardContent className="pt-4">
-                          <div className="flex items-start justify-between">
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-2">
-                                <Badge variant="destructive">{report.reason}</Badge>
-                                <span className="text-sm text-muted-foreground">
-                                  {formatDistanceToNow(new Date(report.created_at), { addSuffix: true })}
-                                </span>
+                {(() => {
+                  const filteredReports = reports?.filter(r =>
+                    reportReasonFilter === 'all' || r.reason === reportReasonFilter
+                  ) || [];
+                  
+                  if (filteredReports.length === 0) {
+                    return (
+                      <div className="text-center py-8">
+                        <CheckCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                        <p className="text-muted-foreground">No pending reports</p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-4">
+                      {filteredReports.map((report) => (
+                        <Card key={report.id} className="border-l-4 border-l-destructive">
+                          <CardContent className="pt-4">
+                            <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
+                              <div className="space-y-3 flex-1">
+                                {/* Header */}
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <Badge variant="destructive">{report.reason}</Badge>
+                                  <span className="text-sm text-muted-foreground">
+                                    {formatDistanceToNow(new Date(report.created_at), { addSuffix: true })}
+                                  </span>
+                                </div>
+
+                                {/* Reported Target Details */}
+                                <div className="p-3 bg-muted/50 rounded-lg space-y-2">
+                                  {report.reported_thread && (
+                                    <div>
+                                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Reported Thread</p>
+                                      <Link
+                                        to={`/thread/${report.reported_thread.id}`}
+                                        className="text-sm font-medium text-primary hover:underline"
+                                      >
+                                        {report.reported_thread.title}
+                                      </Link>
+                                    </div>
+                                  )}
+                                  {report.reported_post && (
+                                    <div>
+                                      <p className="text-xs text-muted-foreground uppercase tracking-wide mb-1">Reported Post</p>
+                                      <p className="text-sm line-clamp-2 bg-background p-2 rounded border">
+                                        {report.reported_post.content.slice(0, 200)}
+                                        {report.reported_post.content.length > 200 && '...'}
+                                      </p>
+                                      <Link
+                                        to={`/thread/${report.reported_post.thread_id}`}
+                                        className="text-xs text-primary hover:underline mt-1 inline-block"
+                                      >
+                                        View in thread →
+                                      </Link>
+                                    </div>
+                                  )}
+                                  {report.reported_user && (
+                                    <div className="flex items-center gap-2">
+                                      <p className="text-xs text-muted-foreground uppercase tracking-wide">Reported User:</p>
+                                      <Link
+                                        to={`/profile/${report.reported_user.username}`}
+                                        className="flex items-center gap-2 text-sm text-primary hover:underline"
+                                      >
+                                        <Avatar className="h-5 w-5">
+                                          <AvatarImage src={report.reported_user.avatar_url || undefined} />
+                                          <AvatarFallback>{report.reported_user.username[0].toUpperCase()}</AvatarFallback>
+                                        </Avatar>
+                                        @{report.reported_user.username}
+                                      </Link>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Description */}
+                                {report.description && (
+                                  <div>
+                                    <p className="text-xs text-muted-foreground mb-1">Additional details:</p>
+                                    <p className="text-sm">{report.description}</p>
+                                  </div>
+                                )}
+
+                                {/* Reporter */}
+                                <p className="text-xs text-muted-foreground">
+                                  Reported by: {report.reporter ? `@${report.reporter.username}` : report.reporter_id?.slice(0, 8) + '...'}
+                                </p>
                               </div>
-                              {report.description && (
-                                <p className="text-sm">{report.description}</p>
-                              )}
-                              <p className="text-xs text-muted-foreground">
-                                Reporter ID: {report.reporter_id?.slice(0, 8)}...
-                              </p>
-                              {report.reported_thread_id && (
-                                <Link to={`/thread/${report.reported_thread_id}`} className="text-sm text-primary hover:underline">
-                                  View Reported Thread
-                                </Link>
-                              )}
-                              {report.reported_post_id && (
-                                <p className="text-xs text-muted-foreground">Post ID: {report.reported_post_id.slice(0, 8)}...</p>
-                              )}
+
+                              {/* Actions */}
+                              <div className="flex lg:flex-col gap-2 shrink-0">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleResolveReport(report.id, 'dismissed')}
+                                  className="flex-1 lg:flex-none"
+                                >
+                                  <XCircle className="h-4 w-4 mr-1" /> Dismiss
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleResolveReport(report.id, 'resolved')}
+                                  className="flex-1 lg:flex-none"
+                                >
+                                  <CheckCircle className="h-4 w-4 mr-1" /> Resolve
+                                </Button>
+                                {report.reported_user && (
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    onClick={() => {
+                                      setSelectedUserId(report.reported_user!.id);
+                                      setBanDialogOpen(true);
+                                    }}
+                                    className="flex-1 lg:flex-none"
+                                  >
+                                    <Ban className="h-4 w-4 mr-1" /> Ban User
+                                  </Button>
+                                )}
+                              </div>
                             </div>
-                            <div className="flex gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => handleResolveReport(report.id, 'dismissed')}
-                              >
-                                <XCircle className="h-4 w-4 mr-1" /> Dismiss
-                              </Button>
-                              <Button
-                                size="sm"
-                                onClick={() => handleResolveReport(report.id, 'resolved')}
-                              >
-                                <CheckCircle className="h-4 w-4 mr-1" /> Resolve
-                              </Button>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <CheckCircle className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                    <p className="text-muted-foreground">No pending reports</p>
-                  </div>
-                )}
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  );
+                })()}
               </CardContent>
             </Card>
           </TabsContent>
