@@ -243,8 +243,11 @@ export default function ThreadPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => toggleBookmark.mutate(threadId!)}
-              disabled={!user}
+              onClick={async () => {
+                const result = await toggleBookmark.mutateAsync(threadId!);
+                toast({ title: result.added ? 'Bookmarked' : 'Bookmark removed' });
+              }}
+              disabled={!user || toggleBookmark.isPending}
             >
               {isBookmarked ? (
                 <><BookmarkCheck className="h-4 w-4 mr-1" /> Bookmarked</>
@@ -256,7 +259,7 @@ export default function ThreadPage() {
               variant="outline"
               size="sm"
               onClick={handleToggleFollow}
-              disabled={!user}
+              disabled={!user || toggleFollow.isPending}
             >
               {isFollowing ? (
                 <><BellOff className="h-4 w-4 mr-1" /> Unfollow</>

@@ -71,23 +71,25 @@ export function useToggleBookmark() {
 
       if (existing) {
         // Remove bookmark
-        await supabase
+        const { error } = await supabase
           .from('bookmarks')
           .delete()
           .eq('id', existing.id);
+        if (error) throw error;
         return { added: false };
       } else {
         // Add bookmark
-        await supabase
+        const { error } = await supabase
           .from('bookmarks')
           .insert({
             thread_id: threadId,
             user_id: user.id,
           });
+        if (error) throw error;
         return { added: true };
       }
     },
-    onSuccess: (_, threadId) => {
+    onSuccess: (result, threadId) => {
       queryClient.invalidateQueries({ queryKey: ['bookmark', threadId, user?.id] });
       queryClient.invalidateQueries({ queryKey: ['bookmarks', user?.id] });
     },
