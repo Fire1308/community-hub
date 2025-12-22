@@ -1,5 +1,4 @@
 import { Link } from 'react-router-dom';
-import { formatDistanceToNow } from 'date-fns';
 import { Bookmark, Trash } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -7,12 +6,10 @@ import { Layout } from '@/components/layout/Layout';
 import { ThreadCard } from '@/components/forum/ThreadCard';
 import { useBookmarks, useToggleBookmark } from '@/hooks/useBookmarks';
 import { useAuth } from '@/contexts/AuthContext';
-
 export default function BookmarksPage() {
   const { user } = useAuth();
-  const { data: bookmarks = [], isLoading } = useBookmarks();
+  const { data: bookmarks = [], isLoading, isError, error, refetch } = useBookmarks();
   const toggleBookmark = useToggleBookmark();
-
   if (!user) {
     return (
       <Layout>
@@ -31,7 +28,19 @@ export default function BookmarksPage() {
       <div className="container py-6 md:py-8">
         <h1 className="text-3xl font-bold mb-6">Bookmarks</h1>
 
-        {isLoading ? (
+        {isError ? (
+          <Card>
+            <CardContent className="p-6 text-center text-muted-foreground">
+              <p className="mb-3">Failed to load bookmarks</p>
+              <p className="text-xs mb-4">
+                {(error as any)?.message || 'Please try again.'}
+              </p>
+              <Button variant="outline" onClick={() => refetch()}>
+                Retry
+              </Button>
+            </CardContent>
+          </Card>
+        ) : isLoading ? (
           <div className="space-y-4">
             {Array.from({ length: 5 }).map((_, i) => (
               <Card key={i} className="animate-pulse">
