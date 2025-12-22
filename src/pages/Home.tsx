@@ -10,6 +10,7 @@ import { ThreadCard } from '@/components/forum/ThreadCard';
 import { CreateThreadDialog } from '@/components/forum/CreateThreadDialog';
 import { TrendingTopics } from '@/components/forum/TrendingTopics';
 import { OnlineUsersCard } from '@/components/forum/OnlineUsersCard';
+import { PaginationControls } from '@/components/ui/pagination-controls';
 import { useCategories } from '@/hooks/useCategories';
 import { useThreads } from '@/hooks/useThreads';
 import { usePopularTags } from '@/hooks/useTags';
@@ -18,14 +19,25 @@ import { Link } from 'react-router-dom';
 
 type ThreadFilter = 'latest' | 'trending' | 'unanswered';
 
+const PAGE_SIZE = 10;
+
 export default function HomePage() {
   const [filter, setFilter] = useState<ThreadFilter>('latest');
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [page, setPage] = useState(1);
   
   const { user } = useAuth();
   const { data: categories = [], isLoading: categoriesLoading } = useCategories();
-  const { data: threads = [], isLoading: threadsLoading } = useThreads({ filter, limit: 10 });
+  const { data: threadsData, isLoading: threadsLoading } = useThreads({ 
+    filter, 
+    limit: PAGE_SIZE, 
+    offset: (page - 1) * PAGE_SIZE 
+  });
   const { data: popularTags = [] } = usePopularTags(8);
+
+  const threads = threadsData?.threads || [];
+  const totalThreads = threadsData?.total || 0;
+  const totalPages = Math.ceil(totalThreads / PAGE_SIZE);
 
   return (
     <Layout>
@@ -55,7 +67,7 @@ export default function HomePage() {
             {/* Thread Filters */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <h2 className="text-xl font-semibold">Recent Discussions</h2>
-              <Tabs value={filter} onValueChange={(v) => setFilter(v as ThreadFilter)}>
+              <Tabs value={filter} onValueChange={(v) => { setFilter(v as ThreadFilter); setPage(1); }}>
                 <TabsList>
                   <TabsTrigger value="latest" className="gap-1">
                     <Clock className="h-4 w-4" />
@@ -92,6 +104,16 @@ export default function HomePage() {
                     <p>No threads found. Be the first to start a discussion!</p>
                   </CardContent>
                 </Card>
+              )}
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <PaginationControls
+                  currentPage={page}
+                  totalPages={totalPages}
+                  onPageChange={setPage}
+                  className="mt-6"
+                />
               )}
             </div>
           </div>
@@ -153,7 +175,7 @@ export default function HomePage() {
               <CardContent>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-primary">{threads.length}+</div>
+                    <div className="text-2xl font-bold text-primary">{totalThreads}+</div>
                     <div className="text-sm text-muted-foreground">Discussions</div>
                   </div>
                   <div className="text-center">

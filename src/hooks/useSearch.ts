@@ -26,16 +26,15 @@ export function useSearch(query: string, options?: {
 
       if (!query.trim()) return results;
 
-      // Search threads
+      // Search threads using ILIKE instead of textSearch for better compatibility
       if (type === 'all' || type === 'threads') {
         let threadsQuery = supabase
           .from('threads')
           .select(`
             *,
-            author:profiles(*),
-            category:categories(*)
+            category:categories(id, name, slug, color, icon)
           `)
-          .textSearch('search_vector', query)
+          .ilike('title', `%${query}%`)
           .limit(20);
 
         if (categoryId) {
@@ -43,21 +42,47 @@ export function useSearch(query: string, options?: {
         }
 
         const { data: threads } = await threadsQuery;
-        results.threads = (threads || []) as unknown as Thread[];
+        
+        if (threads && threads.length > 0) {
+          // Fetch authors separately
+          const authorIds = [...new Set(threads.map(t => t.author_id))];
+          const { data: authors } = await supabase
+            .from('profiles')
+            .select('*')
+            .in('id', authorIds);
+          
+          const authorMap = new Map(authors?.map(a => [a.id, a]) || []);
+          
+          results.threads = threads.map(thread => ({
+            ...thread,
+            author: authorMap.get(thread.author_id) || null,
+          })) as unknown as Thread[];
+        }
       }
 
-      // Search posts
+      // Search posts using ILIKE
       if (type === 'all' || type === 'posts') {
         const { data: posts } = await supabase
           .from('posts')
-          .select(`
-            *,
-            author:profiles(*)
-          `)
-          .textSearch('search_vector', query)
+          .select('*')
+          .ilike('content', `%${query}%`)
           .limit(20);
 
-        results.posts = (posts || []) as unknown as Post[];
+        if (posts && posts.length > 0) {
+          // Fetch authors separately
+          const authorIds = [...new Set(posts.map(p => p.author_id))];
+          const { data: authors } = await supabase
+            .from('profiles')
+            .select('*')
+            .in('id', authorIds);
+          
+          const authorMap = new Map(authors?.map(a => [a.id, a]) || []);
+          
+          results.posts = posts.map(post => ({
+            ...post,
+            author: authorMap.get(post.author_id) || null,
+          })) as unknown as Post[];
+        }
       }
 
       // Search users
