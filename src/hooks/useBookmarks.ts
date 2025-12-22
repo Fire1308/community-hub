@@ -11,21 +11,57 @@ export function useBookmarks() {
     queryFn: async () => {
       if (!user) return [];
       
-      const { data, error } = await supabase
+      const { data: bookmarkRows, error: bookmarksError } = await supabase
         .from('bookmarks')
-        .select(`
-          *,
-          thread:threads(
-            *,
-            author:profiles(*),
-            category:categories(*)
-          )
-        `)
+        .select('*')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      return (data || []) as unknown as Bookmark[];
+
+      if (bookmarksError) throw bookmarksError;
+
+      const rows = (bookmarkRows || []) as unknown as Bookmark[];
+      const threadIds = Array.from(new Set(rows.map(b => b.thread_id).filter(Boolean)));
+      if (threadIds.length === 0) return rows;
+
+      // We can't join threads -> profiles directly because there is no FK relationship.
+      // Fetch threads + categories, then fetch authors separately.
+      const { data: threadRows, error: threadsError } = await supabase
+        .from('threads')
+        .select('*, category:categories(*)')
+        .in('id', threadIds);
+
+      if (threadsError) throw threadsError;
+
+      const authorIds = Array.from(
+        new Set((threadRows || []).map((t: any) => t.author_id).filter(Boolean))
+      );
+
+      let authorRows: any[] = [];
+      if (authorIds.length > 0) {
+        const { data: authors, error: authorsError } = await supabase
+          .from('profiles')
+          .select('*')
+          .in('id', authorIds);
+
+        if (authorsError) throw authorsError;
+        authorRows = authors || [];
+      }
+
+      const authorsById = new Map(authorRows.map(a => [a.id, a]));
+      const threadsById = new Map(
+        (threadRows || []).map((t: any) => [
+          t.id,
+          {
+            ...t,
+            author: authorsById.get(t.author_id) || null,
+          },
+        ])
+      );
+
+      return rows.map((b: any) => ({
+        ...b,
+        thread: threadsById.get(b.thread_id) || null,
+      })) as unknown as Bookmark[];
     },
     enabled: !!user,
   });
