@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { User, Bell, Shield, Palette, Save, Trash2, Upload, Eye, EyeOff, ArrowLeft, ChevronRight, Lock, Mail, Clock, Sparkles } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
@@ -42,21 +42,38 @@ import { cn } from '@/lib/utils';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { Check } from 'lucide-react';
 
-const settingsSections = [
+type SettingsSection = {
+  id: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  description: string;
+  adminOnly?: boolean;
+};
+
+const allSettingsSections: SettingsSection[] = [
   { id: 'profile', label: 'Profile', icon: User, description: 'Your public information' },
   { id: 'notifications', label: 'Notifications', icon: Bell, description: 'Notification preferences' },
   { id: 'appearance', label: 'Appearance', icon: Palette, description: 'Light/Dark mode' },
-  { id: 'forum-style', label: 'Forum Style', icon: Sparkles, description: 'UI themes & festivals' },
+  { id: 'forum-style', label: 'Forum Style', icon: Sparkles, description: 'UI themes & festivals', adminOnly: true },
   { id: 'security', label: 'Security', icon: Shield, description: 'Password & account' },
 ];
 
 export default function Settings() {
-  const { user, profile, signOut } = useAuth();
+  const { user, profile, role, signOut } = useAuth();
   const { theme, setTheme } = useTheme();
   const { forumTheme, setForumTheme, festivalTheme, setFestivalTheme } = useForumTheme();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Filter sections based on user role
+  const settingsSections = useMemo(() => {
+    return allSettingsSections.filter(section => {
+      if (section.adminOnly && role !== 'admin') return false;
+      return true;
+    });
+  }, [role]);
+  
   const activeSection = searchParams.get('section') || 'profile';
 
   const { data: notificationSettings } = useNotificationSettings();
