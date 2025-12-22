@@ -15,11 +15,13 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useUnreadNotificationCount } from '@/hooks/useNotifications';
+import { useUnreadMessagesCount } from '@/hooks/useUnreadMessages';
 
 export function Header() {
   const { user, profile, role, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const { data: unreadCount = 0 } = useUnreadNotificationCount();
+  const { data: unreadNotifications = 0 } = useUnreadNotificationCount();
+  const { data: unreadMessages = 0 } = useUnreadMessagesCount();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
@@ -90,9 +92,9 @@ export function Header() {
               <Link to="/notifications">
                 <Button variant="ghost" size="icon" className="relative">
                   <Bell className="h-5 w-5" />
-                  {unreadCount > 0 && (
+                  {unreadNotifications > 0 && (
                     <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">
-                      {unreadCount > 99 ? '99+' : unreadCount}
+                      {unreadNotifications > 99 ? '99+' : unreadNotifications}
                     </Badge>
                   )}
                 </Button>
@@ -100,8 +102,13 @@ export function Header() {
 
               {/* Messages */}
               <Link to="/messages">
-                <Button variant="ghost" size="icon">
+                <Button variant="ghost" size="icon" className="relative">
                   <MessageSquare className="h-5 w-5" />
+                  {unreadMessages > 0 && (
+                    <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">
+                      {unreadMessages > 99 ? '99+' : unreadMessages}
+                    </Badge>
+                  )}
                 </Button>
               </Link>
 
