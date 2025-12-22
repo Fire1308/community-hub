@@ -70,7 +70,8 @@ export function useCreatePost() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      const { data, error } = await supabase
+      // Insert the post
+      const { data: post, error } = await supabase
         .from('posts')
         .insert({
           thread_id: input.thread_id,
@@ -78,14 +79,88 @@ export function useCreatePost() {
           content: input.content,
           parent_post_id: input.parent_post_id || null,
         })
-        .select(`
-          *,
-          author:profiles(*)
-        `)
+        .select('*')
         .single();
 
       if (error) throw error;
-      return data;
+
+      // Fetch author profile separately
+      const { data: author } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      // Get thread info for notifications
+      const { data: thread } = await supabase
+        .from('threads')
+        .select('id, title, author_id')
+        .eq('id', input.thread_id)
+        .single();
+
+      // Send notification to thread author if it's not their own post
+      if (thread && thread.author_id !== user.id) {
+        await supabase.from('notifications').insert({
+          user_id: thread.author_id,
+          type: 'reply',
+          title: 'New reply to your thread',
+          message: `${author?.display_name || author?.username || 'Someone'} replied to "${thread.title}"`,
+          link: `/thread/${thread.id}`,
+          data: { thread_id: thread.id, post_id: post.id },
+        });
+      }
+
+      // Check for mentions in content and notify mentioned users
+      const mentionRegex = /@(\w+)/g;
+      const mentions = input.content.match(mentionRegex);
+      if (mentions) {
+        const usernames = mentions.map(m => m.slice(1)); // Remove @ prefix
+        const { data: mentionedUsers } = await supabase
+          .from('profiles')
+          .select('id, username')
+          .in('username', usernames);
+
+        if (mentionedUsers) {
+          for (const mentionedUser of mentionedUsers) {
+            if (mentionedUser.id !== user.id) {
+              await supabase.from('notifications').insert({
+                user_id: mentionedUser.id,
+                type: 'mention',
+                title: 'You were mentioned',
+                message: `${author?.display_name || author?.username || 'Someone'} mentioned you in a post`,
+                link: `/thread/${input.thread_id}`,
+                data: { thread_id: input.thread_id, post_id: post.id },
+              });
+            }
+          }
+        }
+      }
+
+      // Notify thread followers
+      const { data: followers } = await supabase
+        .from('thread_follows')
+        .select('user_id')
+        .eq('thread_id', input.thread_id)
+        .eq('notify_on_reply', true)
+        .neq('user_id', user.id);
+
+      if (followers && thread) {
+        for (const follower of followers) {
+          // Don't notify thread author twice
+          if (follower.user_id !== thread.author_id) {
+            await supabase.from('notifications').insert({
+              user_id: follower.user_id,
+              type: 'reply',
+              title: 'New reply in followed thread',
+              message: `${author?.display_name || author?.username || 'Someone'} replied to "${thread.title}"`,
+              link: `/thread/${thread.id}`,
+              data: { thread_id: thread.id, post_id: post.id },
+            });
+          }
+        }
+      }
+
+      return { ...post, author };
     },
     onSuccess: (_, { thread_id }) => {
       queryClient.invalidateQueries({ queryKey: ['posts', thread_id] });
