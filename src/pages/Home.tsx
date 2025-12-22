@@ -8,6 +8,8 @@ import { Layout } from '@/components/layout/Layout';
 import { CategoryCard } from '@/components/forum/CategoryCard';
 import { ThreadCard } from '@/components/forum/ThreadCard';
 import { CreateThreadDialog } from '@/components/forum/CreateThreadDialog';
+import { TrendingTopics } from '@/components/forum/TrendingTopics';
+import { OnlineUsersCard } from '@/components/forum/OnlineUsersCard';
 import { useCategories } from '@/hooks/useCategories';
 import { useThreads } from '@/hooks/useThreads';
 import { usePopularTags } from '@/hooks/useTags';
@@ -96,6 +98,12 @@ export default function HomePage() {
 
           {/* Sidebar */}
           <div className="space-y-6">
+            {/* Online Users */}
+            <OnlineUsersCard />
+
+            {/* Trending Topics */}
+            <TrendingTopics />
+
             {/* Categories */}
             <Card>
               <CardHeader>
