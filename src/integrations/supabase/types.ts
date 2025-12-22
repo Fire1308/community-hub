@@ -152,6 +152,39 @@ export type Database = {
           },
         ]
       }
+      email_verifications: {
+        Row: {
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          otp_code: string
+          password_hash: string
+          username: string
+          verified: boolean
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          expires_at?: string
+          id?: string
+          otp_code: string
+          password_hash: string
+          username: string
+          verified?: boolean
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          otp_code?: string
+          password_hash?: string
+          username?: string
+          verified?: boolean
+        }
+        Relationships: []
+      }
       festival_settings: {
         Row: {
           background_gradient: string | null

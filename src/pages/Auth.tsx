@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Mail, Lock, User, Eye, EyeOff, ArrowLeft, Clock, Shield } from 'lucide-react';
+import { Mail, Lock, User, Eye, EyeOff, ArrowLeft, Clock, Shield, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -26,7 +26,7 @@ const sessionDurations: { value: SessionDuration; label: string }[] = [
 export default function AuthPage() {
   const [searchParams] = useSearchParams();
   const defaultMode = searchParams.get('mode') === 'signup' ? 'signup' : 'signin';
-  const [mode, setMode] = useState<'signin' | 'signup' | 'forgot' | 'verify'>('signin');
+  const [mode, setMode] = useState<'signin' | 'signup' | 'forgot' | 'verify'>(defaultMode);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   
@@ -41,29 +41,30 @@ export default function AuthPage() {
   // OTP verification
   const [otpCode, setOtpCode] = useState('');
   const [pendingEmail, setPendingEmail] = useState('');
-  const [pendingUsername, setPendingUsername] = useState('');
-  const [pendingPassword, setPendingPassword] = useState('');
+  const [resendCooldown, setResendCooldown] = useState(0);
 
   const { signIn, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      navigate('/');
+    }
+  }, [user, navigate]);
+
+  // Resend cooldown timer
+  useEffect(() => {
+    if (resendCooldown > 0) {
+      const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendCooldown]);
+
   if (user) {
-    navigate('/');
     return null;
   }
-
-  const getSessionExpirySeconds = (duration: SessionDuration): number | undefined => {
-    switch (duration) {
-      case '1h': return 60 * 60;
-      case '1d': return 60 * 60 * 24;
-      case '7d': return 60 * 60 * 24 * 7;
-      case '30d': return 60 * 60 * 24 * 30;
-      case 'never': return undefined; // Use default (very long)
-      default: return 60 * 60 * 24 * 7;
-    }
-  };
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,7 +79,6 @@ export default function AuthPage() {
         throw error;
       }
 
-      // Store session preference
       if (rememberMe || sessionDuration === 'never') {
         localStorage.setItem('session_preference', sessionDuration);
       } else {
@@ -131,34 +131,41 @@ export default function AuthPage() {
       return;
     }
 
+    // Username validation - alphanumeric and underscores only
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+      toast({
+        title: 'Invalid username',
+        description: 'Username can only contain letters, numbers, and underscores.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
-      // Direct signup with auto-confirm enabled
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/`,
-          data: {
-            username,
-            display_name: username,
-          }
-        }
+      // Call edge function to send OTP
+      const response = await supabase.functions.invoke('send-otp', {
+        body: { email, username, password },
+        headers: { 'Content-Type': 'application/json' },
       });
 
-      if (error) {
-        if (error.message.includes('already registered')) {
-          throw new Error('An account with this email already exists');
-        }
-        throw error;
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to send verification code');
       }
+
+      if (response.data?.error) {
+        throw new Error(response.data.error);
+      }
+
+      setPendingEmail(email);
+      setMode('verify');
+      setResendCooldown(60);
       
       toast({
-        title: 'Account created!',
-        description: 'Welcome to the community!',
+        title: 'Verification code sent!',
+        description: 'Check your email for the 6-digit code.',
       });
-      navigate('/');
     } catch (error: unknown) {
       toast({
         title: 'Sign up failed',
@@ -183,31 +190,36 @@ export default function AuthPage() {
     setLoading(true);
 
     try {
-      // Now create the actual account
-      const { error: signUpError } = await supabase.auth.signUp({
-        email: pendingEmail,
-        password: pendingPassword,
-        options: {
-          emailRedirectTo: `${window.location.origin}/`,
-          data: {
-            username: pendingUsername,
-            display_name: pendingUsername,
-          }
-        }
+      const response = await supabase.functions.invoke('send-otp', {
+        body: { email: pendingEmail, otp: otpCode },
+        headers: { 'Content-Type': 'application/json' },
       });
 
-      if (signUpError) {
-        if (signUpError.message.includes('already registered')) {
-          throw new Error('An account with this email already exists');
-        }
-        throw signUpError;
+      if (response.error) {
+        throw new Error(response.error.message || 'Verification failed');
       }
+
+      if (response.data?.error) {
+        throw new Error(response.data.error);
+      }
+
+      // Auto sign in
+      const { error: signInError } = await signIn(pendingEmail, password);
       
-      toast({
-        title: 'Account created!',
-        description: 'Welcome to the community!',
-      });
-      navigate('/');
+      if (signInError) {
+        toast({
+          title: 'Account created!',
+          description: 'Please sign in with your credentials.',
+        });
+        setMode('signin');
+        setEmail(pendingEmail);
+      } else {
+        toast({
+          title: 'Welcome!',
+          description: 'Your account has been created successfully.',
+        });
+        navigate('/');
+      }
     } catch (error: unknown) {
       toast({
         title: 'Verification failed',
@@ -220,17 +232,20 @@ export default function AuthPage() {
   };
 
   const handleResendOTP = async () => {
+    if (resendCooldown > 0) return;
+    
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithOtp({
-        email: pendingEmail,
-        options: {
-          shouldCreateUser: false,
-        }
+      const response = await supabase.functions.invoke('send-otp', {
+        body: { email: pendingEmail, username, password },
+        headers: { 'Content-Type': 'application/json' },
       });
 
-      if (error) throw error;
+      if (response.error || response.data?.error) {
+        throw new Error(response.data?.error || 'Failed to resend code');
+      }
       
+      setResendCooldown(60);
       toast({
         title: 'Code resent',
         description: 'Check your email for the new verification code.',
@@ -305,7 +320,14 @@ export default function AuthPage() {
               className="w-full" 
               disabled={loading || otpCode.length !== 6}
             >
-              {loading ? 'Verifying...' : 'Verify & Create Account'}
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Verifying...
+                </>
+              ) : (
+                'Verify & Create Account'
+              )}
             </Button>
 
             <div className="text-center space-y-2">
@@ -316,9 +338,9 @@ export default function AuthPage() {
                 type="button"
                 variant="link"
                 onClick={handleResendOTP}
-                disabled={loading}
+                disabled={loading || resendCooldown > 0}
               >
-                Resend Code
+                {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend Code'}
               </Button>
             </div>
 
@@ -368,7 +390,14 @@ export default function AuthPage() {
               </div>
 
               <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? 'Sending...' : 'Send Reset Link'}
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  'Send Reset Link'
+                )}
               </Button>
 
               <Button
@@ -457,7 +486,6 @@ export default function AuthPage() {
                   </div>
                 </div>
 
-                {/* Session Duration Selection */}
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2">
                     <Clock className="h-4 w-4" />
@@ -492,7 +520,14 @@ export default function AuthPage() {
                 </div>
 
                 <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? 'Signing in...' : 'Sign In'}
+                  {loading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Signing in...
+                    </>
+                  ) : (
+                    'Sign In'
+                  )}
                 </Button>
               </form>
             </TabsContent>
@@ -511,9 +546,11 @@ export default function AuthPage() {
                       placeholder="username"
                       className="pl-10"
                       required
-                      minLength={3}
                     />
                   </div>
+                  <p className="text-xs text-muted-foreground">
+                    Letters, numbers, and underscores only
+                  </p>
                 </div>
 
                 <div className="space-y-2">
@@ -530,9 +567,6 @@ export default function AuthPage() {
                       required
                     />
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    You'll receive a verification code to confirm your email
-                  </p>
                 </div>
 
                 <div className="space-y-2">
@@ -547,7 +581,6 @@ export default function AuthPage() {
                       placeholder="••••••••"
                       className="pl-10 pr-10"
                       required
-                      minLength={6}
                     />
                     <Button
                       type="button"
@@ -562,11 +595,11 @@ export default function AuthPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="signup-confirm">Confirm Password</Label>
+                  <Label htmlFor="confirm-password">Confirm Password</Label>
                   <div className="relative">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
-                      id="signup-confirm"
+                      id="confirm-password"
                       type={showPassword ? 'text' : 'password'}
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
@@ -578,8 +611,19 @@ export default function AuthPage() {
                 </div>
 
                 <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? 'Sending verification...' : 'Continue with Email Verification'}
+                  {loading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Sending verification...
+                    </>
+                  ) : (
+                    'Create Account'
+                  )}
                 </Button>
+
+                <p className="text-xs text-center text-muted-foreground">
+                  By signing up, you agree to our Terms of Service and Privacy Policy
+                </p>
               </form>
             </TabsContent>
           </Tabs>

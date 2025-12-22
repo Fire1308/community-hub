@@ -1,11 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { formatDistanceToNow, format } from 'date-fns';
-import { Send, Search, Phone, Video, MoreVertical, Smile, Paperclip, Mic, Check, CheckCheck, ArrowLeft, User, MessageCircle } from 'lucide-react';
+import { Send, Search, MoreVertical, Smile, Check, CheckCheck, ArrowLeft, User, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -15,6 +14,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import type { PrivateMessage, Profile } from '@/lib/supabase-types';
 
 const EMOJI_LIST = ['😀', '😂', '😍', '🥰', '😎', '🤔', '👍', '👎', '❤️', '🔥', '💯', '🎉', '🙏', '💪', '✨', '😢', '😮', '🤣', '😊', '🥺', '👀', '💀', '🤝', '👏'];
+
+type MessageWithProfile = PrivateMessage & { sender: Profile; recipient: Profile };
+type ConversationItem = { profile: Profile; lastMessage: PrivateMessage; unread: number };
 
 export default function MessagesPage() {
   const [searchParams] = useSearchParams();
@@ -57,26 +59,39 @@ export default function MessagesPage() {
 
       const { data: messages } = await supabase
         .from('private_messages')
-        .select(`
-          *,
-          sender:profiles!private_messages_sender_id_fkey(*),
-          recipient:profiles!private_messages_recipient_id_fkey(*)
-        `)
+        .select('*')
         .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
         .order('created_at', { ascending: false });
 
-      if (!messages) return [];
+      if (!messages || messages.length === 0) return [];
 
-      const userMap = new Map<string, { profile: Profile; lastMessage: PrivateMessage; unread: number }>();
+      // Get unique user IDs
+      const userIds = new Set<string>();
+      messages.forEach((msg: any) => {
+        if (msg.sender_id !== user.id) userIds.add(msg.sender_id);
+        if (msg.recipient_id !== user.id) userIds.add(msg.recipient_id);
+      });
+
+      // Fetch profiles
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('*')
+        .in('id', Array.from(userIds));
+
+      const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+
+      const userMap = new Map<string, ConversationItem>();
       
       messages.forEach((msg: any) => {
-        const otherUser = msg.sender_id === user.id ? msg.recipient : msg.sender;
-        if (otherUser && !userMap.has(otherUser.id)) {
+        const otherUserId = msg.sender_id === user.id ? msg.recipient_id : msg.sender_id;
+        const otherProfile = profileMap.get(otherUserId);
+        
+        if (otherProfile && !userMap.has(otherUserId)) {
           const unread = messages.filter((m: any) => 
-            m.sender_id === otherUser.id && !m.is_read
+            m.sender_id === otherUserId && !m.is_read
           ).length;
-          userMap.set(otherUser.id, {
-            profile: otherUser,
+          userMap.set(otherUserId, {
+            profile: otherProfile as Profile,
             lastMessage: msg,
             unread,
           });
@@ -86,9 +101,10 @@ export default function MessagesPage() {
       return Array.from(userMap.values());
     },
     enabled: !!user,
+    staleTime: Infinity,
   });
 
-  // Fetch messages
+  // Fetch messages for selected conversation
   const { data: messages = [] } = useQuery({
     queryKey: ['messages', user?.id, selectedUserId],
     queryFn: async () => {
@@ -96,45 +112,47 @@ export default function MessagesPage() {
 
       const { data } = await supabase
         .from('private_messages')
-        .select(`
-          *,
-          sender:profiles!private_messages_sender_id_fkey(*),
-          recipient:profiles!private_messages_recipient_id_fkey(*)
-        `)
+        .select('*')
         .or(`and(sender_id.eq.${user.id},recipient_id.eq.${selectedUserId}),and(sender_id.eq.${selectedUserId},recipient_id.eq.${user.id})`)
         .order('created_at', { ascending: true });
 
       // Mark as read
       if (data && data.length > 0) {
-        await supabase
+        supabase
           .from('private_messages')
           .update({ is_read: true })
           .eq('sender_id', selectedUserId)
           .eq('recipient_id', user.id)
-          .eq('is_read', false);
+          .eq('is_read', false)
+          .then(() => {
+            queryClient.invalidateQueries({ queryKey: ['conversations', user.id] });
+          });
       }
 
-      return (data || []) as unknown as (PrivateMessage & { sender: Profile; recipient: Profile })[];
+      return (data || []) as PrivateMessage[];
     },
     enabled: !!user && !!selectedUserId,
+    staleTime: Infinity,
   });
 
-  // Send message
+  // Send message with optimistic update
   const sendMessage = useMutation({
     mutationFn: async (content: string) => {
       if (!user || !selectedUserId) throw new Error('Not authenticated');
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('private_messages')
         .insert({
           sender_id: user.id,
           recipient_id: selectedUserId,
           content,
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
 
-      // Notification
+      // Send notification
       await supabase.from('notifications').insert({
         user_id: selectedUserId,
         type: 'message',
@@ -142,11 +160,40 @@ export default function MessagesPage() {
         message: `${profile?.display_name || profile?.username} sent you a message`,
         link: `/messages?user=${user.id}`,
       });
+
+      return data;
     },
-    onSuccess: () => {
-      setNewMessage('');
-      queryClient.invalidateQueries({ queryKey: ['messages', user?.id, selectedUserId] });
+    onMutate: async (content) => {
+      await queryClient.cancelQueries({ queryKey: ['messages', user?.id, selectedUserId] });
+      
+      const previousMessages = queryClient.getQueryData<PrivateMessage[]>(['messages', user?.id, selectedUserId]);
+
+      const optimisticMessage: PrivateMessage = {
+        id: `temp-${Date.now()}`,
+        sender_id: user!.id,
+        recipient_id: selectedUserId!,
+        content,
+        is_read: false,
+        created_at: new Date().toISOString(),
+      };
+
+      queryClient.setQueryData<PrivateMessage[]>(['messages', user?.id, selectedUserId], (old = []) => [
+        ...old,
+        optimisticMessage,
+      ]);
+
+      return { previousMessages, optimisticMessage };
+    },
+    onSuccess: (data, _, context) => {
+      queryClient.setQueryData<PrivateMessage[]>(['messages', user?.id, selectedUserId], (old = []) => {
+        return old.map(msg => msg.id === context?.optimisticMessage.id ? data : msg);
+      });
       queryClient.invalidateQueries({ queryKey: ['conversations', user?.id] });
+    },
+    onError: (_, __, context) => {
+      if (context?.previousMessages) {
+        queryClient.setQueryData(['messages', user?.id, selectedUserId], context.previousMessages);
+      }
     },
   });
 
@@ -164,10 +211,40 @@ export default function MessagesPage() {
           table: 'private_messages',
         },
         (payload) => {
-          if (payload.new.recipient_id === user.id || payload.new.sender_id === user.id) {
-            queryClient.invalidateQueries({ queryKey: ['messages'] });
-            queryClient.invalidateQueries({ queryKey: ['conversations'] });
+          const newMsg = payload.new as any;
+          
+          // Only handle messages relevant to this user
+          if (newMsg.recipient_id !== user.id && newMsg.sender_id !== user.id) return;
+
+          // Update messages if viewing this conversation
+          if (
+            (newMsg.sender_id === selectedUserId && newMsg.recipient_id === user.id) ||
+            (newMsg.sender_id === user.id && newMsg.recipient_id === selectedUserId)
+          ) {
+            queryClient.setQueryData<PrivateMessage[]>(['messages', user.id, selectedUserId], (old = []) => {
+              if (old.some(m => m.id === newMsg.id)) return old;
+              return [...old, newMsg];
+            });
           }
+
+          // Update conversations
+          queryClient.invalidateQueries({ queryKey: ['conversations', user.id] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'private_messages',
+        },
+        (payload) => {
+          const updatedMsg = payload.new as any;
+          
+          // Update read status in messages
+          queryClient.setQueryData<PrivateMessage[]>(['messages', user.id, selectedUserId], (old = []) => {
+            return old.map(m => m.id === updatedMsg.id ? { ...m, is_read: updatedMsg.is_read } : m);
+          });
         }
       )
       .subscribe();
@@ -175,16 +252,19 @@ export default function MessagesPage() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, queryClient]);
+  }, [user, selectedUserId, queryClient]);
 
+  // Scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() || sendMessage.isPending) return;
     sendMessage.mutate(newMessage.trim());
+    setNewMessage('');
+    setShowEmojis(false);
   };
 
   const startNewChat = (userId: string) => {
@@ -241,7 +321,6 @@ export default function MessagesPage() {
           {/* Conversations / Users List */}
           <ScrollArea className="flex-1">
             {showNewChat ? (
-              // User search for new chat
               <div className="divide-y">
                 {allUsers.map((userItem) => (
                   <button
@@ -267,7 +346,6 @@ export default function MessagesPage() {
                 )}
               </div>
             ) : (
-              // Conversations list
               <div className="divide-y">
                 {conversations
                   .filter(c =>
@@ -302,7 +380,11 @@ export default function MessagesPage() {
                         </div>
                         <div className="flex items-center gap-1">
                           {lastMessage.sender_id === user.id && (
-                            <CheckCheck className="h-4 w-4 text-primary flex-shrink-0" />
+                            lastMessage.is_read ? (
+                              <CheckCheck className="h-4 w-4 text-primary flex-shrink-0" />
+                            ) : (
+                              <Check className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                            )
                           )}
                           <p className={`text-sm truncate ${unread > 0 ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
                             {lastMessage.content}
@@ -349,11 +431,7 @@ export default function MessagesPage() {
                   </Link>
                   <p className="text-xs text-muted-foreground">@{selectedProfile.username}</p>
                 </div>
-                <div className="flex items-center gap-1">
-                  <Button variant="ghost" size="icon"><Phone className="h-5 w-5" /></Button>
-                  <Button variant="ghost" size="icon"><Video className="h-5 w-5" /></Button>
-                  <Button variant="ghost" size="icon"><MoreVertical className="h-5 w-5" /></Button>
-                </div>
+                <Button variant="ghost" size="icon"><MoreVertical className="h-5 w-5" /></Button>
               </div>
 
               {/* Messages */}
@@ -430,41 +508,30 @@ export default function MessagesPage() {
                       </div>
                     </PopoverContent>
                   </Popover>
-                  
-                  <Button type="button" variant="ghost" size="icon">
-                    <Paperclip className="h-5 w-5 text-muted-foreground" />
-                  </Button>
-
                   <Input
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}
-                    placeholder="Write a message..."
+                    placeholder="Type a message..."
                     className="flex-1 rounded-full"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSend(e);
-                      }
-                    }}
                   />
-
-                  {newMessage.trim() ? (
-                    <Button type="submit" size="icon" className="rounded-full" disabled={sendMessage.isPending}>
-                      <Send className="h-5 w-5" />
-                    </Button>
-                  ) : (
-                    <Button type="button" variant="ghost" size="icon">
-                      <Mic className="h-5 w-5 text-muted-foreground" />
-                    </Button>
-                  )}
+                  <Button 
+                    type="submit" 
+                    size="icon" 
+                    className="rounded-full"
+                    disabled={!newMessage.trim() || sendMessage.isPending}
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
                 </form>
               </div>
             </>
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground">
-              <MessageCircle className="h-16 w-16 mb-4 opacity-30" />
-              <p className="text-lg font-medium">Select a conversation</p>
-              <p className="text-sm">or start a new chat</p>
+            <div className="flex-1 flex items-center justify-center text-muted-foreground">
+              <div className="text-center">
+                <MessageCircle className="h-16 w-16 mx-auto mb-4 opacity-30" />
+                <h3 className="text-lg font-medium mb-2">Select a conversation</h3>
+                <p className="text-sm">Choose from existing conversations or start a new one</p>
+              </div>
             </div>
           )}
         </div>
