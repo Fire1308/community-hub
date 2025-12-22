@@ -12,17 +12,40 @@ export function usePosts(threadId: string) {
   return useQuery({
     queryKey: ['posts', threadId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // First get the thread ID if we have a slug
+      let actualThreadId = threadId;
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(threadId);
+      
+      if (!isUUID) {
+        const { data: thread } = await supabase
+          .from('threads')
+          .select('id')
+          .eq('slug', threadId)
+          .maybeSingle();
+        if (!thread) return [];
+        actualThreadId = thread.id;
+      }
+
+      const { data: posts, error } = await supabase
         .from('posts')
-        .select(`
-          *,
-          author:profiles(*)
-        `)
-        .eq('thread_id', threadId)
+        .select('*')
+        .eq('thread_id', actualThreadId)
         .order('created_at', { ascending: true });
       
       if (error) throw error;
-      return (data || []) as unknown as Post[];
+      if (!posts || posts.length === 0) return [];
+
+      // Fetch authors separately
+      const authorIds = [...new Set(posts.map(p => p.author_id))];
+      const { data: authors } = await supabase
+        .from('profiles')
+        .select('id, username, display_name, avatar_url, reputation_points')
+        .in('id', authorIds);
+
+      return posts.map(post => ({
+        ...post,
+        author: authors?.find(a => a.id === post.author_id) || null,
+      })) as unknown as Post[];
     },
     enabled: !!threadId,
   });

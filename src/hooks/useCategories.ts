@@ -25,10 +25,10 @@ export function useCategory(slug: string) {
         .from('categories')
         .select('*')
         .eq('slug', slug)
-        .single();
+        .maybeSingle();
       
       if (error) throw error;
-      return data as Category;
+      return data as Category | null;
     },
     enabled: !!slug,
   });
