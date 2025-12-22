@@ -116,10 +116,26 @@ export function useUnbanUser() {
   });
 }
 
+export interface ReportWithDetails {
+  id: string;
+  reason: string;
+  description: string | null;
+  status: string | null;
+  created_at: string;
+  reporter_id: string;
+  reported_post_id: string | null;
+  reported_thread_id: string | null;
+  reported_user_id: string | null;
+  reporter?: { id: string; username: string; display_name: string | null; avatar_url: string | null } | null;
+  reported_thread?: { id: string; title: string; slug: string } | null;
+  reported_post?: { id: string; content: string; thread_id: string } | null;
+  reported_user?: { id: string; username: string; display_name: string | null; avatar_url: string | null } | null;
+}
+
 export function usePendingReports() {
   return useQuery({
     queryKey: ['pending-reports'],
-    queryFn: async () => {
+    queryFn: async (): Promise<ReportWithDetails[]> => {
       const { data, error } = await supabase
         .from('reports')
         .select('*')
@@ -127,7 +143,42 @@ export function usePendingReports() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data;
+      const reports = data || [];
+
+      // Collect IDs for batch fetching
+      const reporterIds = [...new Set(reports.map(r => r.reporter_id).filter(Boolean))];
+      const threadIds = [...new Set(reports.map(r => r.reported_thread_id).filter(Boolean))] as string[];
+      const postIds = [...new Set(reports.map(r => r.reported_post_id).filter(Boolean))] as string[];
+      const userIds = [...new Set(reports.map(r => r.reported_user_id).filter(Boolean))] as string[];
+
+      // Fetch related data in parallel
+      const [reportersRes, threadsRes, postsRes, usersRes] = await Promise.all([
+        reporterIds.length > 0
+          ? supabase.from('profiles').select('id, username, display_name, avatar_url').in('id', reporterIds)
+          : Promise.resolve({ data: [] }),
+        threadIds.length > 0
+          ? supabase.from('threads').select('id, title, slug').in('id', threadIds)
+          : Promise.resolve({ data: [] }),
+        postIds.length > 0
+          ? supabase.from('posts').select('id, content, thread_id').in('id', postIds)
+          : Promise.resolve({ data: [] }),
+        userIds.length > 0
+          ? supabase.from('profiles').select('id, username, display_name, avatar_url').in('id', userIds)
+          : Promise.resolve({ data: [] }),
+      ]);
+
+      const reportersMap = new Map((reportersRes.data || []).map((p: any) => [p.id, p]));
+      const threadsMap = new Map((threadsRes.data || []).map((t: any) => [t.id, t]));
+      const postsMap = new Map((postsRes.data || []).map((p: any) => [p.id, p]));
+      const usersMap = new Map((usersRes.data || []).map((u: any) => [u.id, u]));
+
+      return reports.map(r => ({
+        ...r,
+        reporter: reportersMap.get(r.reporter_id) || null,
+        reported_thread: r.reported_thread_id ? threadsMap.get(r.reported_thread_id) || null : null,
+        reported_post: r.reported_post_id ? postsMap.get(r.reported_post_id) || null : null,
+        reported_user: r.reported_user_id ? usersMap.get(r.reported_user_id) || null : null,
+      }));
     },
   });
 }
