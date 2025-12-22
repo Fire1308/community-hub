@@ -1,29 +1,55 @@
 import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { formatDistanceToNow } from 'date-fns';
-import { Send, Search } from 'lucide-react';
+import { formatDistanceToNow, format } from 'date-fns';
+import { Send, Search, Phone, Video, MoreVertical, Smile, Paperclip, Mic, Check, CheckCheck, ArrowLeft, User, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Layout } from '@/components/layout/Layout';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import type { PrivateMessage, Profile } from '@/lib/supabase-types';
 
+const EMOJI_LIST = ['😀', '😂', '😍', '🥰', '😎', '🤔', '👍', '👎', '❤️', '🔥', '💯', '🎉', '🙏', '💪', '✨', '😢', '😮', '🤣', '😊', '🥺', '👀', '💀', '🤝', '👏'];
+
 export default function MessagesPage() {
   const [searchParams] = useSearchParams();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const queryClient = useQueryClient();
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(searchParams.get('user'));
   const [newMessage, setNewMessage] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [showNewChat, setShowNewChat] = useState(false);
+  const [showEmojis, setShowEmojis] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Fetch conversations (unique users)
+  // Fetch all users for new chat
+  const { data: allUsers = [] } = useQuery({
+    queryKey: ['all-users', userSearchQuery],
+    queryFn: async () => {
+      if (!user) return [];
+      let query = supabase
+        .from('profiles')
+        .select('*')
+        .neq('id', user.id)
+        .limit(20);
+      
+      if (userSearchQuery) {
+        query = query.or(`username.ilike.%${userSearchQuery}%,display_name.ilike.%${userSearchQuery}%`);
+      }
+      
+      const { data } = await query;
+      return (data || []) as Profile[];
+    },
+    enabled: !!user && showNewChat,
+  });
+
+  // Fetch conversations
   const { data: conversations = [] } = useQuery({
     queryKey: ['conversations', user?.id],
     queryFn: async () => {
@@ -41,15 +67,18 @@ export default function MessagesPage() {
 
       if (!messages) return [];
 
-      // Get unique conversations
-      const userMap = new Map<string, { profile: Profile; lastMessage: PrivateMessage }>();
+      const userMap = new Map<string, { profile: Profile; lastMessage: PrivateMessage; unread: number }>();
       
       messages.forEach((msg: any) => {
         const otherUser = msg.sender_id === user.id ? msg.recipient : msg.sender;
         if (otherUser && !userMap.has(otherUser.id)) {
+          const unread = messages.filter((m: any) => 
+            m.sender_id === otherUser.id && !m.is_read
+          ).length;
           userMap.set(otherUser.id, {
             profile: otherUser,
             lastMessage: msg,
+            unread,
           });
         }
       });
@@ -59,7 +88,7 @@ export default function MessagesPage() {
     enabled: !!user,
   });
 
-  // Fetch messages for selected conversation
+  // Fetch messages
   const { data: messages = [] } = useQuery({
     queryKey: ['messages', user?.id, selectedUserId],
     queryFn: async () => {
@@ -75,12 +104,22 @@ export default function MessagesPage() {
         .or(`and(sender_id.eq.${user.id},recipient_id.eq.${selectedUserId}),and(sender_id.eq.${selectedUserId},recipient_id.eq.${user.id})`)
         .order('created_at', { ascending: true });
 
+      // Mark as read
+      if (data && data.length > 0) {
+        await supabase
+          .from('private_messages')
+          .update({ is_read: true })
+          .eq('sender_id', selectedUserId)
+          .eq('recipient_id', user.id)
+          .eq('is_read', false);
+      }
+
       return (data || []) as unknown as (PrivateMessage & { sender: Profile; recipient: Profile })[];
     },
     enabled: !!user && !!selectedUserId,
   });
 
-  // Send message mutation
+  // Send message
   const sendMessage = useMutation({
     mutationFn: async (content: string) => {
       if (!user || !selectedUserId) throw new Error('Not authenticated');
@@ -95,22 +134,14 @@ export default function MessagesPage() {
 
       if (error) throw error;
 
-      // Create notification for recipient
-      const senderProfile = await supabase
-        .from('profiles')
-        .select('username, display_name')
-        .eq('id', user.id)
-        .single();
-
-      if (senderProfile.data) {
-        await supabase.from('notifications').insert({
-          user_id: selectedUserId,
-          type: 'message',
-          title: 'New Message',
-          message: `${senderProfile.data.display_name || senderProfile.data.username} sent you a message`,
-          link: '/messages',
-        });
-      }
+      // Notification
+      await supabase.from('notifications').insert({
+        user_id: selectedUserId,
+        type: 'message',
+        title: 'New Message',
+        message: `${profile?.display_name || profile?.username} sent you a message`,
+        link: `/messages?user=${user.id}`,
+      });
     },
     onSuccess: () => {
       setNewMessage('');
@@ -119,28 +150,24 @@ export default function MessagesPage() {
     },
   });
 
-  // Scroll to bottom when messages change
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  // Subscribe to new messages
+  // Real-time subscription
   useEffect(() => {
     if (!user) return;
 
     const channel = supabase
-      .channel('private-messages')
+      .channel('private-messages-realtime')
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
           table: 'private_messages',
-          filter: `recipient_id=eq.${user.id}`,
         },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['messages'] });
-          queryClient.invalidateQueries({ queryKey: ['conversations'] });
+        (payload) => {
+          if (payload.new.recipient_id === user.id || payload.new.sender_id === user.id) {
+            queryClient.invalidateQueries({ queryKey: ['messages'] });
+            queryClient.invalidateQueries({ queryKey: ['conversations'] });
+          }
         }
       )
       .subscribe();
@@ -150,19 +177,31 @@ export default function MessagesPage() {
     };
   }, [user, queryClient]);
 
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim()) return;
     sendMessage.mutate(newMessage.trim());
   };
 
+  const startNewChat = (userId: string) => {
+    setSelectedUserId(userId);
+    setShowNewChat(false);
+  };
+
   const selectedConversation = conversations.find(c => c.profile.id === selectedUserId);
+  const selectedProfile = selectedConversation?.profile || allUsers.find(u => u.id === selectedUserId);
 
   if (!user) {
     return (
       <Layout>
         <div className="container py-12 text-center">
-          <p className="mb-4">Please sign in to view messages</p>
+          <MessageCircle className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+          <h2 className="text-2xl font-bold mb-2">Sign in to Message</h2>
+          <p className="text-muted-foreground mb-4">Connect with other members</p>
           <Button asChild>
             <Link to="/auth">Sign In</Link>
           </Button>
@@ -173,140 +212,261 @@ export default function MessagesPage() {
 
   return (
     <Layout>
-      <div className="container py-6 md:py-8">
-        <h1 className="text-3xl font-bold mb-6">Messages</h1>
+      <div className="h-[calc(100vh-140px)] flex">
+        {/* Sidebar */}
+        <div className={`w-full md:w-80 lg:w-96 border-r flex flex-col bg-card ${selectedUserId ? 'hidden md:flex' : 'flex'}`}>
+          {/* Header */}
+          <div className="p-4 border-b">
+            <div className="flex items-center justify-between mb-4">
+              <h1 className="text-xl font-bold">Messages</h1>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setShowNewChat(!showNewChat)}
+              >
+                {showNewChat ? 'Cancel' : 'New Chat'}
+              </Button>
+            </div>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder={showNewChat ? "Search users..." : "Search conversations..."}
+                value={showNewChat ? userSearchQuery : searchQuery}
+                onChange={(e) => showNewChat ? setUserSearchQuery(e.target.value) : setSearchQuery(e.target.value)}
+                className="pl-9 rounded-full bg-muted/50"
+              />
+            </div>
+          </div>
 
-        <div className="grid md:grid-cols-3 gap-6 h-[calc(100vh-250px)]">
-          {/* Conversations List */}
-          <Card className="md:col-span-1">
-            <CardHeader className="p-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search conversations..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9"
-                />
+          {/* Conversations / Users List */}
+          <ScrollArea className="flex-1">
+            {showNewChat ? (
+              // User search for new chat
+              <div className="divide-y">
+                {allUsers.map((userItem) => (
+                  <button
+                    key={userItem.id}
+                    onClick={() => startNewChat(userItem.id)}
+                    className="w-full p-4 flex items-center gap-3 hover:bg-muted/50 transition-colors text-left"
+                  >
+                    <Avatar className="h-12 w-12">
+                      <AvatarImage src={userItem.avatar_url || undefined} />
+                      <AvatarFallback>{userItem.username?.[0]?.toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium">{userItem.display_name || userItem.username}</p>
+                      <p className="text-sm text-muted-foreground">@{userItem.username}</p>
+                    </div>
+                  </button>
+                ))}
+                {allUsers.length === 0 && (
+                  <div className="p-8 text-center text-muted-foreground">
+                    <User className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                    <p>No users found</p>
+                  </div>
+                )}
               </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              <ScrollArea className="h-[calc(100vh-350px)]">
+            ) : (
+              // Conversations list
+              <div className="divide-y">
                 {conversations
-                  .filter(c => 
+                  .filter(c =>
                     c.profile.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
                     c.profile.display_name?.toLowerCase().includes(searchQuery.toLowerCase())
                   )
-                  .map(({ profile, lastMessage }) => (
+                  .map(({ profile: p, lastMessage, unread }) => (
                     <button
-                      key={profile.id}
-                      onClick={() => setSelectedUserId(profile.id)}
-                      className={`w-full p-4 flex items-center gap-3 hover:bg-muted transition-colors text-left ${
-                        selectedUserId === profile.id ? 'bg-muted' : ''
+                      key={p.id}
+                      onClick={() => setSelectedUserId(p.id)}
+                      className={`w-full p-4 flex items-center gap-3 hover:bg-muted/50 transition-colors text-left ${
+                        selectedUserId === p.id ? 'bg-muted' : ''
                       }`}
                     >
-                      <Avatar>
-                        <AvatarImage src={profile.avatar_url || undefined} />
-                        <AvatarFallback>{profile.username?.[0]?.toUpperCase()}</AvatarFallback>
-                      </Avatar>
+                      <div className="relative">
+                        <Avatar className="h-12 w-12">
+                          <AvatarImage src={p.avatar_url || undefined} />
+                          <AvatarFallback>{p.username?.[0]?.toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                        {unread > 0 && (
+                          <span className="absolute -top-1 -right-1 h-5 w-5 bg-primary text-primary-foreground rounded-full text-xs flex items-center justify-center">
+                            {unread}
+                          </span>
+                        )}
+                      </div>
                       <div className="flex-1 min-w-0">
-                        <div className="font-medium truncate">
-                          {profile.display_name || profile.username}
+                        <div className="flex items-center justify-between">
+                          <p className="font-medium truncate">{p.display_name || p.username}</p>
+                          <span className="text-xs text-muted-foreground">
+                            {formatDistanceToNow(new Date(lastMessage.created_at), { addSuffix: false })}
+                          </span>
                         </div>
-                        <div className="text-sm text-muted-foreground truncate">
-                          {lastMessage.content}
+                        <div className="flex items-center gap-1">
+                          {lastMessage.sender_id === user.id && (
+                            <CheckCheck className="h-4 w-4 text-primary flex-shrink-0" />
+                          )}
+                          <p className={`text-sm truncate ${unread > 0 ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
+                            {lastMessage.content}
+                          </p>
                         </div>
                       </div>
                     </button>
                   ))}
-                {conversations.length === 0 && (
+                {conversations.length === 0 && !showNewChat && (
                   <div className="p-8 text-center text-muted-foreground">
-                    No conversations yet
+                    <MessageCircle className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                    <p className="mb-2">No conversations yet</p>
+                    <Button variant="outline" size="sm" onClick={() => setShowNewChat(true)}>
+                      Start a chat
+                    </Button>
                   </div>
                 )}
-              </ScrollArea>
-            </CardContent>
-          </Card>
-
-          {/* Messages */}
-          <Card className="md:col-span-2 flex flex-col">
-            {selectedUserId && selectedConversation ? (
-              <>
-                <CardHeader className="p-4 border-b">
-                  <div className="flex items-center gap-3">
-                    <Avatar>
-                      <AvatarImage src={selectedConversation.profile.avatar_url || undefined} />
-                      <AvatarFallback>
-                        {selectedConversation.profile.username?.[0]?.toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <Link
-                        to={`/profile/${selectedConversation.profile.username}`}
-                        className="font-medium hover:underline"
-                      >
-                        {selectedConversation.profile.display_name || selectedConversation.profile.username}
-                      </Link>
-                      <div className="text-sm text-muted-foreground">
-                        @{selectedConversation.profile.username}
-                      </div>
-                    </div>
-                  </div>
-                </CardHeader>
-
-                <ScrollArea className="flex-1 p-4">
-                  <div className="space-y-4">
-                    {messages.map(message => (
-                      <div
-                        key={message.id}
-                        className={`flex ${message.sender_id === user.id ? 'justify-end' : 'justify-start'}`}
-                      >
-                        <div
-                          className={`max-w-[70%] rounded-lg p-3 ${
-                            message.sender_id === user.id
-                              ? 'bg-primary text-primary-foreground'
-                              : 'bg-muted'
-                          }`}
-                        >
-                          <p>{message.content}</p>
-                          <p className={`text-xs mt-1 ${
-                            message.sender_id === user.id ? 'text-primary-foreground/70' : 'text-muted-foreground'
-                          }`}>
-                            {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                    <div ref={messagesEndRef} />
-                  </div>
-                </ScrollArea>
-
-                <div className="p-4 border-t">
-                  <form onSubmit={handleSend} className="flex gap-2">
-                    <Textarea
-                      value={newMessage}
-                      onChange={(e) => setNewMessage(e.target.value)}
-                      placeholder="Type a message..."
-                      className="min-h-[40px] max-h-[100px]"
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault();
-                          handleSend(e);
-                        }
-                      }}
-                    />
-                    <Button type="submit" size="icon" disabled={!newMessage.trim()}>
-                      <Send className="h-4 w-4" />
-                    </Button>
-                  </form>
-                </div>
-              </>
-            ) : (
-              <div className="flex-1 flex items-center justify-center text-muted-foreground">
-                Select a conversation to start messaging
               </div>
             )}
-          </Card>
+          </ScrollArea>
+        </div>
+
+        {/* Chat Area */}
+        <div className={`flex-1 flex flex-col bg-muted/30 ${!selectedUserId ? 'hidden md:flex' : 'flex'}`}>
+          {selectedUserId && selectedProfile ? (
+            <>
+              {/* Chat Header */}
+              <div className="p-4 border-b bg-card flex items-center gap-3">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="md:hidden"
+                  onClick={() => setSelectedUserId(null)}
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+                <Avatar className="h-10 w-10">
+                  <AvatarImage src={selectedProfile.avatar_url || undefined} />
+                  <AvatarFallback>{selectedProfile.username?.[0]?.toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <Link to={`/profile/${selectedProfile.username}`} className="font-medium hover:underline">
+                    {selectedProfile.display_name || selectedProfile.username}
+                  </Link>
+                  <p className="text-xs text-muted-foreground">@{selectedProfile.username}</p>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button variant="ghost" size="icon"><Phone className="h-5 w-5" /></Button>
+                  <Button variant="ghost" size="icon"><Video className="h-5 w-5" /></Button>
+                  <Button variant="ghost" size="icon"><MoreVertical className="h-5 w-5" /></Button>
+                </div>
+              </div>
+
+              {/* Messages */}
+              <ScrollArea className="flex-1 p-4">
+                <div className="space-y-4 max-w-3xl mx-auto">
+                  {messages.map((message, idx) => {
+                    const isMe = message.sender_id === user.id;
+                    const showDate = idx === 0 || 
+                      new Date(message.created_at).toDateString() !== new Date(messages[idx - 1].created_at).toDateString();
+                    
+                    return (
+                      <div key={message.id}>
+                        {showDate && (
+                          <div className="text-center my-4">
+                            <span className="text-xs bg-muted px-3 py-1 rounded-full text-muted-foreground">
+                              {format(new Date(message.created_at), 'MMMM d, yyyy')}
+                            </span>
+                          </div>
+                        )}
+                        <div className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                          <div
+                            className={`max-w-[75%] rounded-2xl px-4 py-2 ${
+                              isMe
+                                ? 'bg-primary text-primary-foreground rounded-br-md'
+                                : 'bg-card rounded-bl-md shadow-sm'
+                            }`}
+                          >
+                            <p className="break-words">{message.content}</p>
+                            <div className={`flex items-center justify-end gap-1 mt-1 ${isMe ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
+                              <span className="text-[10px]">
+                                {format(new Date(message.created_at), 'HH:mm')}
+                              </span>
+                              {isMe && (
+                                message.is_read ? (
+                                  <CheckCheck className="h-3 w-3" />
+                                ) : (
+                                  <Check className="h-3 w-3" />
+                                )
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div ref={messagesEndRef} />
+                </div>
+              </ScrollArea>
+
+              {/* Input Area */}
+              <div className="p-4 border-t bg-card">
+                <form onSubmit={handleSend} className="flex items-center gap-2 max-w-3xl mx-auto">
+                  <Popover open={showEmojis} onOpenChange={setShowEmojis}>
+                    <PopoverTrigger asChild>
+                      <Button type="button" variant="ghost" size="icon">
+                        <Smile className="h-5 w-5 text-muted-foreground" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-64 p-2" side="top">
+                      <div className="grid grid-cols-8 gap-1">
+                        {EMOJI_LIST.map((emoji) => (
+                          <button
+                            key={emoji}
+                            type="button"
+                            onClick={() => {
+                              setNewMessage(prev => prev + emoji);
+                              setShowEmojis(false);
+                            }}
+                            className="h-8 w-8 flex items-center justify-center hover:bg-muted rounded text-lg"
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                  
+                  <Button type="button" variant="ghost" size="icon">
+                    <Paperclip className="h-5 w-5 text-muted-foreground" />
+                  </Button>
+
+                  <Input
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    placeholder="Write a message..."
+                    className="flex-1 rounded-full"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSend(e);
+                      }
+                    }}
+                  />
+
+                  {newMessage.trim() ? (
+                    <Button type="submit" size="icon" className="rounded-full" disabled={sendMessage.isPending}>
+                      <Send className="h-5 w-5" />
+                    </Button>
+                  ) : (
+                    <Button type="button" variant="ghost" size="icon">
+                      <Mic className="h-5 w-5 text-muted-foreground" />
+                    </Button>
+                  )}
+                </form>
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground">
+              <MessageCircle className="h-16 w-16 mb-4 opacity-30" />
+              <p className="text-lg font-medium">Select a conversation</p>
+              <p className="text-sm">or start a new chat</p>
+            </div>
+          )}
         </div>
       </div>
     </Layout>
