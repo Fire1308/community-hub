@@ -1,4 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 export type ForumTheme = 
   | 'default'
@@ -32,6 +34,7 @@ interface ForumThemeContextType {
   setForumTheme: (theme: ForumTheme) => void;
   festivalTheme: FestivalTheme;
   setFestivalTheme: (theme: FestivalTheme) => void;
+  isGlobalTheme: boolean;
 }
 
 const ForumThemeContext = createContext<ForumThemeContextType | undefined>(undefined);
@@ -65,20 +68,37 @@ export const festivalThemes: { id: FestivalTheme; name: string; description: str
   { id: 'tazaungdaing', name: 'Tazaungdaing', nameMM: 'တန်ဆောင်တိုင်', description: 'Hot air balloons', emoji: '🎈' },
 ];
 
-export function ForumThemeProvider({ children }: { children: React.ReactNode }) {
-  const [forumTheme, setForumThemeState] = useState<ForumTheme>(() => {
-    if (typeof window !== 'undefined') {
-      return (localStorage.getItem('forum-style-theme') as ForumTheme) || 'default';
-    }
-    return 'default';
-  });
+// Hook to fetch global theme from database
+function useGlobalThemeSettings() {
+  return useQuery({
+    queryKey: ['global-theme-settings'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('system_settings' as any)
+        .select('*');
 
-  const [festivalTheme, setFestivalThemeState] = useState<FestivalTheme>(() => {
-    if (typeof window !== 'undefined') {
-      return (localStorage.getItem('forum-festival-theme') as FestivalTheme) || 'none';
-    }
-    return 'none';
+      if (error) throw error;
+      
+      const settings: Record<string, any> = {};
+      (data as any[])?.forEach((s: any) => {
+        settings[s.setting_key] = s.setting_value;
+      });
+      return settings;
+    },
+    staleTime: 1000 * 30, // 30 seconds - refresh more frequently for real-time feel
+    refetchInterval: 1000 * 60, // Refetch every minute
   });
+}
+
+export function ForumThemeProvider({ children }: { children: React.ReactNode }) {
+  const { data: globalSettings, isLoading } = useGlobalThemeSettings();
+  
+  const [localForumTheme, setLocalForumTheme] = useState<ForumTheme>('default');
+  const [localFestivalTheme, setLocalFestivalTheme] = useState<FestivalTheme>('none');
+
+  // Use global settings from database
+  const forumTheme = (globalSettings?.forum_theme as ForumTheme) || localForumTheme;
+  const festivalTheme = (globalSettings?.festival_theme as FestivalTheme) || localFestivalTheme;
 
   useEffect(() => {
     const root = document.documentElement;
@@ -94,16 +114,19 @@ export function ForumThemeProvider({ children }: { children: React.ReactNode }) 
     if (festivalTheme !== 'none') {
       root.classList.add(`festival-${festivalTheme}`);
     }
-    
-    localStorage.setItem('forum-style-theme', forumTheme);
-    localStorage.setItem('forum-festival-theme', festivalTheme);
   }, [forumTheme, festivalTheme]);
 
-  const setForumTheme = (theme: ForumTheme) => setForumThemeState(theme);
-  const setFestivalTheme = (theme: FestivalTheme) => setFestivalThemeState(theme);
+  const setForumTheme = (theme: ForumTheme) => setLocalForumTheme(theme);
+  const setFestivalTheme = (theme: FestivalTheme) => setLocalFestivalTheme(theme);
 
   return (
-    <ForumThemeContext.Provider value={{ forumTheme, setForumTheme, festivalTheme, setFestivalTheme }}>
+    <ForumThemeContext.Provider value={{ 
+      forumTheme, 
+      setForumTheme, 
+      festivalTheme, 
+      setFestivalTheme,
+      isGlobalTheme: !isLoading && !!globalSettings,
+    }}>
       {children}
     </ForumThemeContext.Provider>
   );

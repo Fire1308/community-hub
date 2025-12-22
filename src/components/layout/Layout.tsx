@@ -2,6 +2,8 @@ import { ReactNode } from 'react';
 import { Header } from './Header';
 import { Footer } from './Footer';
 import { FestivalBanner } from '@/components/festival/FestivalBanner';
+import { GlobalChat } from '@/components/chat/GlobalChat';
+import { ThemeSwitcher } from '@/components/theme/ThemeSwitcher';
 
 interface LayoutProps {
   children: ReactNode;
@@ -16,6 +18,8 @@ export function Layout({ children }: LayoutProps) {
         {children}
       </main>
       <Footer />
+      <GlobalChat />
+      <ThemeSwitcher />
     </div>
   );
 }
