@@ -14,6 +14,8 @@ import { Layout } from '@/components/layout/Layout';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOnlineStatus } from '@/hooks/useUnreadMessages';
+import { useTypingIndicator, usePrefetchReactions } from '@/hooks/useChatFeatures';
+import { MessageReactions } from '@/components/chat/MessageReactions';
 import type { PrivateMessage, Profile } from '@/lib/supabase-types';
 
 const EMOJI_LIST = ['😀', '😂', '😍', '🥰', '😎', '🤔', '👍', '👎', '❤️', '🔥', '💯', '🎉', '🙏', '💪', '✨', '😢', '😮', '🤣', '😊', '🥺', '👀', '💀', '🤝', '👏'];
@@ -36,6 +38,7 @@ export default function MessagesPage() {
   const messagesTopRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const { showOnlineStatus, toggleOnlineVisibility, isLoading: statusLoading } = useOnlineStatus();
+  const { typingUsers, setTyping, stopTyping } = useTypingIndicator('private', selectedUserId || undefined);
   
   // Track if we should scroll to bottom (only for new messages, not pagination)
   const shouldScrollToBottom = useRef(true);
@@ -160,6 +163,12 @@ export default function MessagesPage() {
 
   // Flatten messages from all pages
   const messages = messagesData?.pages.flatMap(page => page.messages) || [];
+
+  // Prefetch reactions for visible messages
+  usePrefetchReactions(
+    messages.map(m => m.id).filter(id => !id.startsWith('temp-')),
+    'private'
+  );
 
   // Send message with optimistic update - NO duplicate issue
   const sendMessage = useMutation({
@@ -352,6 +361,14 @@ export default function MessagesPage() {
     sendMessage.mutate(newMessage.trim());
     setNewMessage('');
     setShowEmojis(false);
+    stopTyping();
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewMessage(e.target.value);
+    if (e.target.value) {
+      setTyping();
+    }
   };
 
   const startNewChat = (userId: string) => {
@@ -610,7 +627,7 @@ export default function MessagesPage() {
                       new Date(message.created_at).toDateString() !== new Date(messages[idx - 1].created_at).toDateString();
                     
                     return (
-                      <div key={message.id}>
+                      <div key={message.id} className="group">
                         {showDate && (
                           <div className="text-center my-4">
                             <span className="text-xs bg-muted px-3 py-1 rounded-full text-muted-foreground">
@@ -618,7 +635,7 @@ export default function MessagesPage() {
                             </span>
                           </div>
                         )}
-                        <div className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
                           <div
                             className={`max-w-[75%] rounded-2xl px-4 py-2 ${
                               isMe
@@ -640,10 +657,33 @@ export default function MessagesPage() {
                               )}
                             </div>
                           </div>
+                          {/* Reactions */}
+                          {!message.id.startsWith('temp-') && (
+                            <MessageReactions 
+                              messageId={message.id} 
+                              chatType="private" 
+                              isOwn={isMe}
+                            />
+                          )}
                         </div>
                       </div>
                     );
                   })}
+
+                  {/* Typing Indicator */}
+                  {typingUsers.length > 0 && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground animate-pulse">
+                      <div className="flex gap-1">
+                        <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                      </div>
+                      <span className="text-xs">
+                        {selectedProfile?.display_name || selectedProfile?.username} is typing...
+                      </span>
+                    </div>
+                  )}
+
                   <div ref={messagesEndRef} />
                 </div>
               </ScrollArea>
@@ -677,7 +717,7 @@ export default function MessagesPage() {
                   </Popover>
                   <Input
                     value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
+                    onChange={handleInputChange}
                     placeholder="Type a message..."
                     className="flex-1 rounded-full"
                   />

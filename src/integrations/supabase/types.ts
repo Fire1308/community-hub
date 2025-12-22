@@ -152,6 +152,33 @@ export type Database = {
           },
         ]
       }
+      chat_reactions: {
+        Row: {
+          chat_type: string
+          created_at: string
+          id: string
+          message_id: string
+          reaction_type: string
+          user_id: string
+        }
+        Insert: {
+          chat_type: string
+          created_at?: string
+          id?: string
+          message_id: string
+          reaction_type: string
+          user_id: string
+        }
+        Update: {
+          chat_type?: string
+          created_at?: string
+          id?: string
+          message_id?: string
+          reaction_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       email_verifications: {
         Row: {
           created_at: string
@@ -853,6 +880,30 @@ export type Database = {
           },
         ]
       }
+      typing_indicators: {
+        Row: {
+          chat_type: string
+          id: string
+          recipient_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          chat_type: string
+          id?: string
+          recipient_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          chat_type?: string
+          id?: string
+          recipient_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_badges: {
         Row: {
           awarded_at: string
@@ -941,6 +992,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_old_typing_indicators: { Args: never; Returns: undefined }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
