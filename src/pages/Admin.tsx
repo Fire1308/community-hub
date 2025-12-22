@@ -494,18 +494,16 @@ export default function Admin() {
                               {report.description && (
                                 <p className="text-sm">{report.description}</p>
                               )}
-                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                <span>Reported by:</span>
-                                <Avatar className="h-5 w-5">
-                                  <AvatarImage src={report.reporter?.avatar_url || undefined} />
-                                  <AvatarFallback>{report.reporter?.username?.[0]?.toUpperCase()}</AvatarFallback>
-                                </Avatar>
-                                <span>@{report.reporter?.username}</span>
-                              </div>
-                              {report.reported_thread && (
-                                <Link to={`/thread/${report.reported_thread.id}`} className="text-sm text-primary hover:underline">
-                                  View Thread: {report.reported_thread.title}
+                              <p className="text-xs text-muted-foreground">
+                                Reporter ID: {report.reporter_id?.slice(0, 8)}...
+                              </p>
+                              {report.reported_thread_id && (
+                                <Link to={`/thread/${report.reported_thread_id}`} className="text-sm text-primary hover:underline">
+                                  View Reported Thread
                                 </Link>
+                              )}
+                              {report.reported_post_id && (
+                                <p className="text-xs text-muted-foreground">Post ID: {report.reported_post_id.slice(0, 8)}...</p>
                               )}
                             </div>
                             <div className="flex gap-2">
