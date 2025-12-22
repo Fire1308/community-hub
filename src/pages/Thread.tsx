@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Pin, Lock, CheckCircle, Bookmark, BookmarkCheck, Share2, MoreHorizontal, Flag, Trash } from 'lucide-react';
+import { Pin, Lock, CheckCircle, Bookmark, BookmarkCheck, Share2, MoreHorizontal, Flag, Trash } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +26,7 @@ import { Layout } from '@/components/layout/Layout';
 import { PostCard } from '@/components/forum/PostCard';
 import { MarkdownEditor } from '@/components/forum/MarkdownEditor';
 import { ReportDialog } from '@/components/forum/ReportDialog';
+import { Poll } from '@/components/forum/Poll';
 import { useThread, useUpdateThread, useDeleteThread } from '@/hooks/useThreads';
 import { usePosts, useCreatePost, useDeletePost } from '@/hooks/usePosts';
 import { useThreadTags } from '@/hooks/useTags';
@@ -264,6 +265,11 @@ export default function ThreadPage() {
         </div>
 
         <Separator className="mb-6" />
+
+        {/* Poll */}
+        <div className="mb-6">
+          <Poll threadId={threadId!} />
+        </div>
 
         {/* Posts */}
         <div className="space-y-4 mb-8">
