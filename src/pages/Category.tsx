@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Plus, ArrowLeft } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Layout } from '@/components/layout/Layout';
 import { ThreadCard } from '@/components/forum/ThreadCard';
 import { CreateThreadDialog } from '@/components/forum/CreateThreadDialog';
+import { BackButton } from '@/components/layout/BackButton';
 import { useCategory } from '@/hooks/useCategories';
 import { useThreads } from '@/hooks/useThreads';
 import { useAuth } from '@/contexts/AuthContext';
@@ -49,13 +50,16 @@ export default function CategoryPage() {
   return (
     <Layout>
       <div className="container py-6">
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
-          <Link to="/" className="hover:text-foreground">Home</Link>
-          <span>/</span>
-          <Link to="/categories" className="hover:text-foreground">Categories</Link>
-          <span>/</span>
-          <span className="text-foreground">{category.name}</span>
+        {/* Back Button & Breadcrumb */}
+        <div className="flex items-center gap-4 mb-6">
+          <BackButton fallbackPath="/categories" />
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Link to="/" className="hover:text-foreground">Home</Link>
+            <span>/</span>
+            <Link to="/categories" className="hover:text-foreground">Categories</Link>
+            <span>/</span>
+            <span className="text-foreground">{category.name}</span>
+          </div>
         </div>
 
         {/* Category Header */}

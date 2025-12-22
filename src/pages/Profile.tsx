@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Layout } from '@/components/layout/Layout';
 import { ThreadCard } from '@/components/forum/ThreadCard';
 import { ActivityFeed } from '@/components/profile/ActivityFeed';
+import { BackButton } from '@/components/layout/BackButton';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useThreads } from '@/hooks/useThreads';
@@ -161,6 +162,11 @@ export default function ProfilePage() {
 
   return (
     <Layout>
+      {/* Back Button */}
+      <div className="container pt-4">
+        <BackButton fallbackPath="/members" />
+      </div>
+      
       {/* Cover Image */}
       <div 
         className="h-32 md:h-48 bg-gradient-to-r from-primary/20 to-primary/5"
