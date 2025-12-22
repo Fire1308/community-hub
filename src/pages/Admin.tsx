@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { FestivalCustomizer } from '@/components/admin/FestivalCustomizer';
+import { BackButton } from '@/components/layout/BackButton';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -183,6 +184,7 @@ export default function Admin() {
     <Layout>
       <div className="container py-8">
         <div className="flex items-center gap-4 mb-6">
+          <BackButton fallbackPath="/" />
           <Shield className="h-8 w-8 text-primary" />
           <div>
             <h1 className="text-3xl font-bold">Admin Panel</h1>

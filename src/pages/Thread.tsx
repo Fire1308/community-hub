@@ -4,6 +4,7 @@ import { Pin, Lock, CheckCircle, Bookmark, BookmarkCheck, Share2, MoreHorizontal
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { BackButton } from '@/components/layout/BackButton';
 import { Separator } from '@/components/ui/separator';
 import {
   DropdownMenu,
@@ -170,13 +171,16 @@ export default function ThreadPage() {
   return (
     <Layout>
       <div className="container py-6">
-        {/* Breadcrumb */}
-        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
-          <Link to="/" className="hover:text-foreground">Home</Link>
-          <span>/</span>
-          <Link to={`/category/${thread.category?.slug}`} className="hover:text-foreground">
-            {thread.category?.name}
-          </Link>
+        {/* Back Button & Breadcrumb */}
+        <div className="flex items-center gap-4 mb-6">
+          <BackButton fallbackPath={`/category/${thread.category?.slug}`} />
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Link to="/" className="hover:text-foreground">Home</Link>
+            <span>/</span>
+            <Link to={`/category/${thread.category?.slug}`} className="hover:text-foreground">
+              {thread.category?.name}
+            </Link>
+          </div>
         </div>
 
         {/* Thread Header */}
