@@ -2,11 +2,10 @@ import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
-import { MapPin, Calendar, Settings, UserPlus, UserMinus, MessageSquare, Award } from 'lucide-react';
+import { MapPin, Calendar, Settings, UserPlus, UserMinus, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Layout } from '@/components/layout/Layout';
 import { ThreadCard } from '@/components/forum/ThreadCard';
@@ -16,7 +15,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useThreads } from '@/hooks/useThreads';
 import { useToast } from '@/hooks/use-toast';
-import type { Profile, Badge as BadgeType } from '@/lib/supabase-types';
+import type { Profile } from '@/lib/supabase-types';
 
 export default function ProfilePage() {
   const { username } = useParams<{ username: string }>();
@@ -38,22 +37,6 @@ export default function ProfilePage() {
     },
   });
 
-  // Fetch user badges
-  const { data: userBadges = [] } = useQuery({
-    queryKey: ['user-badges', profile?.id],
-    queryFn: async () => {
-      if (!profile) return [];
-      const { data } = await supabase
-        .from('user_badges')
-        .select(`
-          *,
-          badge:badges(*)
-        `)
-        .eq('user_id', profile.id);
-      return data?.map(ub => ub.badge) || [];
-    },
-    enabled: !!profile,
-  });
 
   // Fetch followers count
   const { data: followersCount = 0 } = useQuery({
@@ -210,9 +193,6 @@ export default function ProfilePage() {
                   <span className="flex items-center gap-1">
                     <Calendar className="h-4 w-4" /> Joined {formatDistanceToNow(new Date(profile.created_at), { addSuffix: true })}
                   </span>
-                  <span className="flex items-center gap-1">
-                    <Award className="h-4 w-4" /> {profile.reputation_points} reputation
-                  </span>
                 </div>
               </div>
 
@@ -260,58 +240,30 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        <div className="grid lg:grid-cols-3 gap-6">
-          {/* Main Content */}
-          <div className="lg:col-span-2">
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="mb-4">
-                <TabsTrigger value="threads">Threads</TabsTrigger>
-                <TabsTrigger value="activity">Activity</TabsTrigger>
-              </TabsList>
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="mb-4">
+            <TabsTrigger value="threads">Threads</TabsTrigger>
+            <TabsTrigger value="activity">Activity</TabsTrigger>
+          </TabsList>
 
-              <TabsContent value="threads" className="space-y-4">
-                {threads.length > 0 ? (
-                  threads.map(thread => (
-                    <ThreadCard key={thread.id} thread={thread} />
-                  ))
-                ) : (
-                  <Card>
-                    <CardContent className="p-8 text-center text-muted-foreground">
-                      No threads yet
-                    </CardContent>
-                  </Card>
-                )}
-              </TabsContent>
+          <TabsContent value="threads" className="space-y-3">
+            {threads.length > 0 ? (
+              threads.map(thread => (
+                <ThreadCard key={thread.id} thread={thread} />
+              ))
+            ) : (
+              <Card>
+                <CardContent className="p-8 text-center text-muted-foreground">
+                  No threads yet
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
 
-              <TabsContent value="activity">
-                <ActivityFeed userId={profile.id} />
-              </TabsContent>
-            </Tabs>
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Badges */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Badges</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {userBadges.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {(userBadges as BadgeType[]).map(badge => (
-                      <Badge key={badge.id} variant="secondary" className="gap-1">
-                        {badge.icon} {badge.name}
-                      </Badge>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">No badges earned yet</p>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+          <TabsContent value="activity">
+            <ActivityFeed userId={profile.id} />
+          </TabsContent>
+        </Tabs>
       </div>
     </Layout>
   );

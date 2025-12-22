@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Users, Shield, Flag, BarChart3, FolderOpen, Settings,
   Search, MoreHorizontal, Ban, UserCheck, Trash2, Lock, Unlock,
-  Plus, Edit, AlertTriangle, CheckCircle, XCircle, Eye, Sparkles
+  Plus, Edit, AlertTriangle, CheckCircle, XCircle, Eye, Sparkles, Upload, X
 } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { FestivalCustomizer } from '@/components/admin/FestivalCustomizer';
@@ -65,6 +65,7 @@ import {
   useUpdateCategory,
   useDeleteCategory,
 } from '@/hooks/useAdmin';
+import { useAppSettings, useUpdateAppSettings } from '@/hooks/useAppSettings';
 import { Database } from '@/integrations/supabase/types';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -85,6 +86,19 @@ export default function Admin() {
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<{ id: string; name: string; description: string; slug: string } | null>(null);
   const [newCategory, setNewCategory] = useState({ name: '', description: '', slug: '', icon: '', color: '' });
+
+  // App settings state
+  const { data: appSettings } = useAppSettings();
+  const updateAppSettings = useUpdateAppSettings();
+  const [appName, setAppName] = useState('');
+  const [appLogoUrl, setAppLogoUrl] = useState('');
+
+  useEffect(() => {
+    if (appSettings) {
+      setAppName(appSettings.app_name || 'Forum');
+      setAppLogoUrl(appSettings.app_logo_url || '');
+    }
+  }, [appSettings]);
 
   const { data: users, isLoading: usersLoading } = useAdminUsers(userSearch);
   const { data: reports } = usePendingReports();
@@ -690,6 +704,62 @@ export default function Admin() {
           {/* Settings Tab */}
           <TabsContent value="settings">
             <div className="space-y-6">
+              {/* App Branding */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>App Branding</CardTitle>
+                  <CardDescription>Customize your forum's name and logo</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>App Name</Label>
+                    <Input
+                      value={appName}
+                      onChange={(e) => setAppName(e.target.value)}
+                      placeholder="My Forum"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Logo URL</Label>
+                    <div className="flex gap-2">
+                      <Input
+                        value={appLogoUrl}
+                        onChange={(e) => setAppLogoUrl(e.target.value)}
+                        placeholder="https://example.com/logo.png"
+                        className="flex-1"
+                      />
+                      {appLogoUrl && (
+                        <Button variant="ghost" size="icon" onClick={() => setAppLogoUrl('')}>
+                          <X className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                    {appLogoUrl && (
+                      <div className="mt-2 p-2 border rounded-md inline-block">
+                        <img src={appLogoUrl} alt="Logo preview" className="h-10 w-10 object-contain" />
+                      </div>
+                    )}
+                    <p className="text-sm text-muted-foreground">Enter a URL for your forum logo (recommended: 40x40px)</p>
+                  </div>
+                  <Button 
+                    onClick={async () => {
+                      try {
+                        await updateAppSettings.mutateAsync({ 
+                          app_name: appName, 
+                          app_logo_url: appLogoUrl || null 
+                        });
+                        toast({ title: 'App branding updated' });
+                      } catch {
+                        toast({ title: 'Failed to update branding', variant: 'destructive' });
+                      }
+                    }}
+                    disabled={updateAppSettings.isPending}
+                  >
+                    {updateAppSettings.isPending ? 'Saving...' : 'Save Branding'}
+                  </Button>
+                </CardContent>
+              </Card>
+
               <Card>
                 <CardHeader>
                   <CardTitle>Forum Rules</CardTitle>

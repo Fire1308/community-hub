@@ -16,12 +16,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useUnreadNotificationCount } from '@/hooks/useNotifications';
 import { useUnreadMessagesCount } from '@/hooks/useUnreadMessages';
+import { useAppSettings } from '@/hooks/useAppSettings';
 
 export function Header() {
   const { user, profile, role, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { data: unreadNotifications = 0 } = useUnreadNotificationCount();
   const { data: unreadMessages = 0 } = useUnreadMessagesCount();
+  const { data: appSettings } = useAppSettings();
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
 
@@ -42,8 +44,12 @@ export function Header() {
       <div className="flex h-14 items-center justify-between gap-4 px-4">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2 font-bold text-xl text-primary">
-          <MessageSquare className="h-6 w-6" />
-          <span className="hidden sm:inline">Forum</span>
+          {appSettings?.app_logo_url ? (
+            <img src={appSettings.app_logo_url} alt={appSettings?.app_name || 'Forum'} className="h-7 w-7 object-contain" />
+          ) : (
+            <MessageSquare className="h-6 w-6" />
+          )}
+          <span className="hidden sm:inline">{appSettings?.app_name || 'Forum'}</span>
         </Link>
 
         {/* Search Bar */}
