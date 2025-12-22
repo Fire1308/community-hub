@@ -133,7 +133,7 @@ export function Poll({ threadId }: PollProps) {
 
   if (!poll) return null;
 
-  const options = (Array.isArray(poll.options) ? poll.options : []) as PollOption[];
+  const options = (Array.isArray(poll.options) ? poll.options : []) as unknown as PollOption[];
   const isExpired = poll.expires_at && new Date(poll.expires_at) < new Date();
 
   return (
