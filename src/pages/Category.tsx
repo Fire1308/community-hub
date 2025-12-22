@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Plus } from 'lucide-react';
+import { Plus, Pin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Layout } from '@/components/layout/Layout';
@@ -10,6 +10,7 @@ import { BackButton } from '@/components/layout/BackButton';
 import { PaginationControls } from '@/components/ui/pagination-controls';
 import { useCategory } from '@/hooks/useCategories';
 import { useThreads } from '@/hooks/useThreads';
+import { usePinnedThreads } from '@/hooks/usePinnedThreads';
 import { useAuth } from '@/contexts/AuthContext';
 
 const PAGE_SIZE = 10;
@@ -21,6 +22,7 @@ export default function CategoryPage() {
   const [page, setPage] = useState(1);
 
   const { data: category, isLoading: categoryLoading } = useCategory(slug!);
+  const { data: pinnedThreads = [] } = usePinnedThreads(category?.id);
   const { data: threadsData, isLoading: threadsLoading } = useThreads({
     categoryId: category?.id,
     limit: PAGE_SIZE,
@@ -28,6 +30,8 @@ export default function CategoryPage() {
   });
 
   const threads = threadsData?.threads || [];
+  // Filter out pinned threads from regular list
+  const regularThreads = threads.filter(t => !t.is_pinned);
   const totalThreads = threadsData?.total || 0;
   const totalPages = Math.ceil(totalThreads / PAGE_SIZE);
 
@@ -108,17 +112,32 @@ export default function CategoryPage() {
             Threads {totalThreads > 0 && `(${totalThreads})`}
           </h2>
 
+          {/* Pinned Threads */}
+          {page === 1 && pinnedThreads.length > 0 && (
+            <div className="space-y-3 mb-4">
+              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                <Pin className="h-4 w-4" />
+                <span>Pinned</span>
+              </div>
+              {pinnedThreads.map(thread => (
+                <ThreadCard key={thread.id} thread={thread} />
+              ))}
+            </div>
+          )}
+
           {threadsLoading ? (
             Array.from({ length: 5 }).map((_, i) => (
               <Card key={i} className="animate-pulse">
                 <CardContent className="p-4 h-24" />
               </Card>
             ))
-          ) : threads.length > 0 ? (
+          ) : regularThreads.length > 0 ? (
             <>
-              {threads.map(thread => (
-                <ThreadCard key={thread.id} thread={thread} />
-              ))}
+              <div className="space-y-3">
+                {regularThreads.map(thread => (
+                  <ThreadCard key={thread.id} thread={thread} />
+                ))}
+              </div>
               {totalPages > 1 && (
                 <PaginationControls
                   currentPage={page}
@@ -128,7 +147,7 @@ export default function CategoryPage() {
                 />
               )}
             </>
-          ) : (
+          ) : pinnedThreads.length === 0 ? (
             <Card>
               <CardContent className="p-8 text-center text-muted-foreground">
                 <p className="mb-4">No threads in this category yet.</p>
@@ -139,7 +158,7 @@ export default function CategoryPage() {
                 )}
               </CardContent>
             </Card>
-          )}
+          ) : null}
         </div>
       </div>
 

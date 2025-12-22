@@ -66,6 +66,7 @@ import {
   useDeleteCategory,
 } from '@/hooks/useAdmin';
 import { useAppSettings, useUpdateAppSettings } from '@/hooks/useAppSettings';
+import { supabase } from '@/integrations/supabase/client';
 import { Database } from '@/integrations/supabase/types';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -720,26 +721,50 @@ export default function Admin() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Logo URL</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        value={appLogoUrl}
-                        onChange={(e) => setAppLogoUrl(e.target.value)}
-                        placeholder="https://example.com/logo.png"
-                        className="flex-1"
-                      />
+                    <Label>Logo</Label>
+                    <div className="flex items-center gap-4">
+                      {appLogoUrl && (
+                        <div className="p-2 border rounded-md">
+                          <img src={appLogoUrl} alt="Logo preview" className="h-12 w-12 object-contain" />
+                        </div>
+                      )}
+                      <div className="flex-1">
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            
+                            try {
+                              const fileExt = file.name.split('.').pop();
+                              const fileName = `logo-${Date.now()}.${fileExt}`;
+                              
+                              const { error: uploadError } = await supabase.storage
+                                .from('app-assets')
+                                .upload(fileName, file, { upsert: true });
+                              
+                              if (uploadError) throw uploadError;
+                              
+                              const { data: { publicUrl } } = supabase.storage
+                                .from('app-assets')
+                                .getPublicUrl(fileName);
+                              
+                              setAppLogoUrl(publicUrl);
+                              toast({ title: 'Logo uploaded' });
+                            } catch (err: any) {
+                              toast({ title: 'Upload failed', description: err.message, variant: 'destructive' });
+                            }
+                          }}
+                        />
+                        <p className="text-sm text-muted-foreground mt-1">Recommended: 40x40px PNG or SVG</p>
+                      </div>
                       {appLogoUrl && (
                         <Button variant="ghost" size="icon" onClick={() => setAppLogoUrl('')}>
                           <X className="h-4 w-4" />
                         </Button>
                       )}
                     </div>
-                    {appLogoUrl && (
-                      <div className="mt-2 p-2 border rounded-md inline-block">
-                        <img src={appLogoUrl} alt="Logo preview" className="h-10 w-10 object-contain" />
-                      </div>
-                    )}
-                    <p className="text-sm text-muted-foreground">Enter a URL for your forum logo (recommended: 40x40px)</p>
                   </div>
                   <Button 
                     onClick={async () => {

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, TrendingUp, Clock, MessageSquare, HelpCircle } from 'lucide-react';
+import { Plus, TrendingUp, Clock, MessageSquare, HelpCircle, Pin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -13,6 +13,7 @@ import { OnlineUsersCard } from '@/components/forum/OnlineUsersCard';
 import { PaginationControls } from '@/components/ui/pagination-controls';
 import { useCategories } from '@/hooks/useCategories';
 import { useThreads } from '@/hooks/useThreads';
+import { usePinnedThreads } from '@/hooks/usePinnedThreads';
 import { usePopularTags } from '@/hooks/useTags';
 import { useAuth } from '@/contexts/AuthContext';
 import { Link } from 'react-router-dom';
@@ -28,6 +29,7 @@ export default function HomePage() {
   
   const { user } = useAuth();
   const { data: categories = [], isLoading: categoriesLoading } = useCategories();
+  const { data: pinnedThreads = [] } = usePinnedThreads();
   const { data: threadsData, isLoading: threadsLoading } = useThreads({ 
     filter, 
     limit: PAGE_SIZE, 
@@ -36,6 +38,8 @@ export default function HomePage() {
   const { data: popularTags = [] } = usePopularTags(8);
 
   const threads = threadsData?.threads || [];
+  // Filter out pinned threads from regular list to avoid duplicates
+  const regularThreads = threads.filter(t => !t.is_pinned);
   const totalThreads = threadsData?.total || 0;
   const totalPages = Math.ceil(totalThreads / PAGE_SIZE);
 
@@ -85,7 +89,20 @@ export default function HomePage() {
               </Tabs>
             </div>
 
-            {/* Threads List */}
+            {/* Pinned Threads */}
+            {page === 1 && pinnedThreads.length > 0 && (
+              <div className="space-y-3 mb-4">
+                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                  <Pin className="h-4 w-4" />
+                  <span>Pinned</span>
+                </div>
+                {pinnedThreads.map(thread => (
+                  <ThreadCard key={thread.id} thread={thread} />
+                ))}
+              </div>
+            )}
+
+            {/* Regular Threads List */}
             <div className="space-y-3">
               {threadsLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
@@ -93,18 +110,18 @@ export default function HomePage() {
                     <CardContent className="p-4 h-24" />
                   </Card>
                 ))
-              ) : threads.length > 0 ? (
-                threads.map(thread => (
+              ) : regularThreads.length > 0 ? (
+                regularThreads.map(thread => (
                   <ThreadCard key={thread.id} thread={thread} />
                 ))
-              ) : (
+              ) : pinnedThreads.length === 0 ? (
                 <Card>
                   <CardContent className="p-8 text-center text-muted-foreground">
                     <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
                     <p>No threads found. Be the first to start a discussion!</p>
                   </CardContent>
                 </Card>
-              )}
+              ) : null}
 
               {/* Pagination */}
               {totalPages > 1 && (

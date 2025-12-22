@@ -28,6 +28,7 @@ import { PostCard } from '@/components/forum/PostCard';
 import { MarkdownEditor } from '@/components/forum/MarkdownEditor';
 import { ReportDialog } from '@/components/forum/ReportDialog';
 import { Poll } from '@/components/forum/Poll';
+import { PaginationControls } from '@/components/ui/pagination-controls';
 import { useThread, useUpdateThread, useDeleteThread } from '@/hooks/useThreads';
 import { usePosts, useCreatePost, useDeletePost } from '@/hooks/usePosts';
 import { useThreadTags } from '@/hooks/useTags';
@@ -36,6 +37,8 @@ import { useTrackThreadView, useIsFollowingThread, useToggleThreadFollow } from 
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import type { Post } from '@/lib/supabase-types';
+
+const POSTS_PER_PAGE = 20;
 
 export default function ThreadPage() {
   const { threadId } = useParams<{ threadId: string }>();
@@ -48,9 +51,17 @@ export default function ThreadPage() {
   const [reportOpen, setReportOpen] = useState(false);
   const [reportTarget, setReportTarget] = useState<{ type: 'post' | 'thread'; id: string } | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [page, setPage] = useState(1);
 
   const { data: thread, isLoading: threadLoading } = useThread(threadId!);
-  const { data: posts = [], isLoading: postsLoading } = usePosts(threadId!);
+  const { data: postsData, isLoading: postsLoading } = usePosts(threadId!, {
+    limit: POSTS_PER_PAGE,
+    offset: (page - 1) * POSTS_PER_PAGE,
+  });
+  const posts = postsData?.posts || [];
+  const totalPosts = postsData?.total || 0;
+  const totalPages = Math.ceil(totalPosts / POSTS_PER_PAGE);
+  
   const { data: tags = [] } = useThreadTags(threadId!);
   const { data: isBookmarked = false } = useIsBookmarked(threadId!);
   const { data: isFollowing = false } = useIsFollowingThread(threadId);
@@ -300,19 +311,19 @@ export default function ThreadPage() {
         </div>
 
         {/* Posts */}
-        <div className="space-y-4 mb-8">
+        <div className="space-y-4 mb-6">
           {postsLoading ? (
             Array.from({ length: 3 }).map((_, i) => (
               <Card key={i} className="animate-pulse">
                 <CardContent className="p-6 h-32" />
               </Card>
             ))
-          ) : (
+          ) : posts.length > 0 ? (
             posts.map((post, index) => (
               <PostCard
                 key={post.id}
                 post={post}
-                isFirstPost={index === 0}
+                isFirstPost={page === 1 && index === 0}
                 onReply={handleQuote}
                 onReport={(p) => handleReport('post', p.id)}
                 onDelete={handleDeletePost}
@@ -326,8 +337,24 @@ export default function ThreadPage() {
                 }}
               />
             ))
+          ) : (
+            <Card>
+              <CardContent className="p-8 text-center text-muted-foreground">
+                No posts yet. Be the first to reply!
+              </CardContent>
+            </Card>
           )}
         </div>
+
+        {/* Post Pagination */}
+        {totalPages > 1 && (
+          <PaginationControls
+            currentPage={page}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            className="mb-8"
+          />
+        )}
 
         {/* Reply Form */}
         {canReply ? (
