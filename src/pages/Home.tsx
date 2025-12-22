@@ -68,6 +68,23 @@ export default function HomePage() {
         <div className="grid lg:grid-cols-3 gap-6 md:gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Pinned Threads Section - Separate from Recent Discussions */}
+            {pinnedThreads.length > 0 && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Pin className="h-5 w-5 text-primary" />
+                    Pinned
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {pinnedThreads.map(thread => (
+                    <ThreadCard key={thread.id} thread={thread} />
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
             {/* Thread Filters */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <h2 className="text-xl font-semibold">Recent Discussions</h2>
@@ -88,19 +105,6 @@ export default function HomePage() {
                 </TabsList>
               </Tabs>
             </div>
-
-            {/* Pinned Threads */}
-            {page === 1 && pinnedThreads.length > 0 && (
-              <div className="space-y-3 mb-4">
-                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                  <Pin className="h-4 w-4" />
-                  <span>Pinned</span>
-                </div>
-                {pinnedThreads.map(thread => (
-                  <ThreadCard key={thread.id} thread={thread} />
-                ))}
-              </div>
-            )}
 
             {/* Regular Threads List */}
             <div className="space-y-3">

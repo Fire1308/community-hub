@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Plus, Pin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Layout } from '@/components/layout/Layout';
 import { ThreadCard } from '@/components/forum/ThreadCard';
 import { CreateThreadDialog } from '@/components/forum/CreateThreadDialog';
@@ -107,23 +107,27 @@ export default function CategoryPage() {
           </CardContent>
         </Card>
 
+        {/* Pinned Threads Section - Separate card */}
+        {pinnedThreads.length > 0 && (
+          <Card className="mb-6">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Pin className="h-5 w-5 text-primary" />
+                Pinned
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {pinnedThreads.map(thread => (
+                <ThreadCard key={thread.id} thread={thread} />
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
         <div className="space-y-4">
           <h2 className="text-xl font-semibold">
             Threads {totalThreads > 0 && `(${totalThreads})`}
           </h2>
-
-          {/* Pinned Threads */}
-          {page === 1 && pinnedThreads.length > 0 && (
-            <div className="space-y-3 mb-4">
-              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                <Pin className="h-4 w-4" />
-                <span>Pinned</span>
-              </div>
-              {pinnedThreads.map(thread => (
-                <ThreadCard key={thread.id} thread={thread} />
-              ))}
-            </div>
-          )}
 
           {threadsLoading ? (
             Array.from({ length: 5 }).map((_, i) => (
