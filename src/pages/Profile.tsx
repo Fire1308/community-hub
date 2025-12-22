@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { formatDistanceToNow } from 'date-fns';
-import { MapPin, Calendar, Link as LinkIcon, Settings, UserPlus, UserMinus, MessageSquare, Award } from 'lucide-react';
+import { MapPin, Calendar, Settings, UserPlus, UserMinus, MessageSquare, Award } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Layout } from '@/components/layout/Layout';
 import { ThreadCard } from '@/components/forum/ThreadCard';
+import { ActivityFeed } from '@/components/profile/ActivityFeed';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useThreads } from '@/hooks/useThreads';
@@ -257,7 +258,7 @@ export default function ProfilePage() {
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="mb-4">
                 <TabsTrigger value="threads">Threads</TabsTrigger>
-                <TabsTrigger value="replies">Replies</TabsTrigger>
+                <TabsTrigger value="activity">Activity</TabsTrigger>
               </TabsList>
 
               <TabsContent value="threads" className="space-y-4">
@@ -274,12 +275,8 @@ export default function ProfilePage() {
                 )}
               </TabsContent>
 
-              <TabsContent value="replies" className="space-y-4">
-                <Card>
-                  <CardContent className="p-8 text-center text-muted-foreground">
-                    Replies will appear here
-                  </CardContent>
-                </Card>
+              <TabsContent value="activity">
+                <ActivityFeed userId={profile.id} />
               </TabsContent>
             </Tabs>
           </div>
