@@ -220,18 +220,21 @@ export type Database = {
       }
       global_chat: {
         Row: {
+          attachments: Json | null
           created_at: string | null
           id: string
           message: string
           user_id: string
         }
         Insert: {
+          attachments?: Json | null
           created_at?: string | null
           id?: string
           message: string
           user_id: string
         }
         Update: {
+          attachments?: Json | null
           created_at?: string | null
           id?: string
           message?: string
