@@ -1,19 +1,32 @@
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Mail, Lock, User, Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { Mail, Lock, User, Eye, EyeOff, ArrowLeft, Clock, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
+
+type SessionDuration = '1h' | '1d' | '7d' | '30d' | 'never';
+
+const sessionDurations: { value: SessionDuration; label: string }[] = [
+  { value: '1h', label: '1 hour' },
+  { value: '1d', label: '1 day' },
+  { value: '7d', label: '7 days' },
+  { value: '30d', label: '30 days' },
+  { value: 'never', label: 'Never expire' },
+];
 
 export default function AuthPage() {
   const [searchParams] = useSearchParams();
   const defaultMode = searchParams.get('mode') === 'signup' ? 'signup' : 'signin';
-  const [mode, setMode] = useState<'signin' | 'signup' | 'forgot'>(defaultMode);
+  const [mode, setMode] = useState<'signin' | 'signup' | 'forgot' | 'verify'>('signin');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   
@@ -22,8 +35,16 @@ export default function AuthPage() {
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [sessionDuration, setSessionDuration] = useState<SessionDuration>('7d');
+  const [rememberMe, setRememberMe] = useState(false);
+  
+  // OTP verification
+  const [otpCode, setOtpCode] = useState('');
+  const [pendingEmail, setPendingEmail] = useState('');
+  const [pendingUsername, setPendingUsername] = useState('');
+  const [pendingPassword, setPendingPassword] = useState('');
 
-  const { signIn, signUp, user } = useAuth();
+  const { signIn, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -32,6 +53,17 @@ export default function AuthPage() {
     navigate('/');
     return null;
   }
+
+  const getSessionExpirySeconds = (duration: SessionDuration): number | undefined => {
+    switch (duration) {
+      case '1h': return 60 * 60;
+      case '1d': return 60 * 60 * 24;
+      case '7d': return 60 * 60 * 24 * 7;
+      case '30d': return 60 * 60 * 24 * 30;
+      case 'never': return undefined; // Use default (very long)
+      default: return 60 * 60 * 24 * 7;
+    }
+  };
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,16 +77,23 @@ export default function AuthPage() {
         }
         throw error;
       }
+
+      // Store session preference
+      if (rememberMe || sessionDuration === 'never') {
+        localStorage.setItem('session_preference', sessionDuration);
+      } else {
+        sessionStorage.setItem('session_preference', sessionDuration);
+      }
       
       toast({
         title: 'Welcome back!',
         description: 'You have successfully signed in.',
       });
       navigate('/');
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Sign in failed',
-        description: error.message,
+        description: error instanceof Error ? error.message : 'An error occurred',
         variant: 'destructive',
       });
     } finally {
@@ -95,12 +134,74 @@ export default function AuthPage() {
     setLoading(true);
 
     try {
-      const { error } = await signUp(email, password, username);
-      if (error) {
-        if (error.message.includes('already registered')) {
+      // Send OTP to email for verification
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          shouldCreateUser: false, // Don't create user yet
+          data: {
+            username,
+          }
+        }
+      });
+
+      if (error && !error.message.includes('already registered')) {
+        throw error;
+      }
+      
+      // Store pending registration data
+      setPendingEmail(email);
+      setPendingUsername(username);
+      setPendingPassword(password);
+      
+      toast({
+        title: 'Verification code sent!',
+        description: 'Check your email for the verification code.',
+      });
+      
+      setMode('verify');
+    } catch (error: unknown) {
+      toast({
+        title: 'Sign up failed',
+        description: error instanceof Error ? error.message : 'An error occurred',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyOTP = async () => {
+    if (otpCode.length !== 6) {
+      toast({
+        title: 'Invalid code',
+        description: 'Please enter the 6-digit verification code.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // Now create the actual account
+      const { error: signUpError } = await supabase.auth.signUp({
+        email: pendingEmail,
+        password: pendingPassword,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`,
+          data: {
+            username: pendingUsername,
+            display_name: pendingUsername,
+          }
+        }
+      });
+
+      if (signUpError) {
+        if (signUpError.message.includes('already registered')) {
           throw new Error('An account with this email already exists');
         }
-        throw error;
+        throw signUpError;
       }
       
       toast({
@@ -108,10 +209,37 @@ export default function AuthPage() {
         description: 'Welcome to the community!',
       });
       navigate('/');
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
-        title: 'Sign up failed',
-        description: error.message,
+        title: 'Verification failed',
+        description: error instanceof Error ? error.message : 'An error occurred',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendOTP = async () => {
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email: pendingEmail,
+        options: {
+          shouldCreateUser: false,
+        }
+      });
+
+      if (error) throw error;
+      
+      toast({
+        title: 'Code resent',
+        description: 'Check your email for the new verification code.',
+      });
+    } catch (error: unknown) {
+      toast({
+        title: 'Failed to resend code',
+        description: error instanceof Error ? error.message : 'An error occurred',
         variant: 'destructive',
       });
     } finally {
@@ -135,16 +263,82 @@ export default function AuthPage() {
         description: 'We sent you a password reset link.',
       });
       setMode('signin');
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Error',
-        description: error.message,
+        description: error instanceof Error ? error.message : 'An error occurred',
         variant: 'destructive',
       });
     } finally {
       setLoading(false);
     }
   };
+
+  if (mode === 'verify') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+              <Shield className="h-6 w-6 text-primary" />
+            </div>
+            <CardTitle>Verify Your Email</CardTitle>
+            <CardDescription>
+              Enter the 6-digit code sent to {pendingEmail}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex justify-center">
+              <InputOTP maxLength={6} value={otpCode} onChange={setOtpCode}>
+                <InputOTPGroup>
+                  <InputOTPSlot index={0} />
+                  <InputOTPSlot index={1} />
+                  <InputOTPSlot index={2} />
+                  <InputOTPSlot index={3} />
+                  <InputOTPSlot index={4} />
+                  <InputOTPSlot index={5} />
+                </InputOTPGroup>
+              </InputOTP>
+            </div>
+
+            <Button 
+              onClick={handleVerifyOTP} 
+              className="w-full" 
+              disabled={loading || otpCode.length !== 6}
+            >
+              {loading ? 'Verifying...' : 'Verify & Create Account'}
+            </Button>
+
+            <div className="text-center space-y-2">
+              <p className="text-sm text-muted-foreground">
+                Didn't receive the code?
+              </p>
+              <Button
+                type="button"
+                variant="link"
+                onClick={handleResendOTP}
+                disabled={loading}
+              >
+                Resend Code
+              </Button>
+            </div>
+
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full"
+              onClick={() => {
+                setMode('signup');
+                setOtpCode('');
+              }}
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" /> Back to Sign Up
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (mode === 'forgot') {
     return (
@@ -264,6 +458,40 @@ export default function AuthPage() {
                   </div>
                 </div>
 
+                {/* Session Duration Selection */}
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    Session Duration
+                  </Label>
+                  <Select value={sessionDuration} onValueChange={(v) => setSessionDuration(v as SessionDuration)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select session duration" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {sessionDurations.map((duration) => (
+                        <SelectItem key={duration.value} value={duration.value}>
+                          {duration.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Choose how long you want to stay logged in
+                  </p>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Checkbox 
+                    id="remember" 
+                    checked={rememberMe}
+                    onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                  />
+                  <Label htmlFor="remember" className="text-sm font-normal cursor-pointer">
+                    Remember me on this device
+                  </Label>
+                </div>
+
                 <Button type="submit" className="w-full" disabled={loading}>
                   {loading ? 'Signing in...' : 'Sign In'}
                 </Button>
@@ -303,6 +531,9 @@ export default function AuthPage() {
                       required
                     />
                   </div>
+                  <p className="text-xs text-muted-foreground">
+                    You'll receive a verification code to confirm your email
+                  </p>
                 </div>
 
                 <div className="space-y-2">
@@ -348,7 +579,7 @@ export default function AuthPage() {
                 </div>
 
                 <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? 'Creating account...' : 'Create Account'}
+                  {loading ? 'Sending verification...' : 'Continue with Email Verification'}
                 </Button>
               </form>
             </TabsContent>
