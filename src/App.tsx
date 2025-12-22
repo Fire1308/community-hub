@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { ForumThemeProvider } from "@/contexts/ForumThemeContext";
 import { ThemeSwitcher } from "@/components/theme/ThemeSwitcher";
+import { RealtimeNotifications } from "@/components/notifications/RealtimeNotifications";
 import Home from "./pages/Home";
 import Auth from "./pages/Auth";
 import Thread from "./pages/Thread";
@@ -33,6 +34,7 @@ const App = () => (
           <TooltipProvider>
             <Toaster />
             <Sonner />
+            <RealtimeNotifications />
             <BrowserRouter>
               <Routes>
                 <Route path="/" element={<Home />} />
