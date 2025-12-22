@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { MessageCircle, Send, X, AlertTriangle, Loader2, Smile, Image, Paperclip } from 'lucide-react';
+import { MessageCircle, Send, X, AlertTriangle, Smile } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -19,11 +19,13 @@ export function GlobalChat() {
   const { user } = useAuth();
   const { messages, isLoading, sendMessage } = useGlobalChat();
   const { data: banStatus } = useBanStatus();
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
-    if (scrollRef.current && isOpen) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    if (isOpen && messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages, isOpen]);
 
@@ -52,7 +54,7 @@ export function GlobalChat() {
   }
 
   const handleSend = () => {
-    if (!message.trim()) return;
+    if (!message.trim() || sendMessage.isPending) return;
     sendMessage.mutate(message);
     setMessage('');
     setShowEmojis(false);
@@ -78,11 +80,6 @@ export function GlobalChat() {
           className="rounded-full h-14 w-14 shadow-lg hover:scale-105 transition-transform bg-gradient-to-br from-primary to-primary/80"
         >
           <MessageCircle className="h-6 w-6" />
-          {messages.length > 0 && (
-            <span className="absolute -top-1 -right-1 h-5 w-5 bg-destructive text-destructive-foreground rounded-full text-xs flex items-center justify-center">
-              {messages.length > 99 ? '99+' : messages.length}
-            </span>
-          )}
         </Button>
       ) : (
         <Card className="w-[350px] sm:w-[400px] shadow-2xl animate-in slide-in-from-bottom-4 border-primary/20">
@@ -91,7 +88,7 @@ export function GlobalChat() {
               <MessageCircle className="h-4 w-4 text-primary" />
               Global Chat
               <span className="text-xs font-normal text-muted-foreground">
-                ({messages.length} messages)
+                ({messages.length})
               </span>
             </CardTitle>
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsOpen(false)}>
@@ -100,53 +97,56 @@ export function GlobalChat() {
           </CardHeader>
 
           <CardContent className="p-0">
-            <ScrollArea className="h-[400px] p-4" ref={scrollRef}>
-              {isLoading ? (
-                <div className="flex items-center justify-center h-full">
-                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                </div>
-              ) : messages.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-sm">
-                  <MessageCircle className="h-12 w-12 mb-4 opacity-30" />
-                  <p>No messages yet.</p>
-                  <p className="text-xs">Be the first to say hello! 👋</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {messages.map((msg) => {
-                    const isMe = msg.user_id === user.id;
-                    return (
-                      <div key={msg.id} className={`flex gap-2 ${isMe ? 'flex-row-reverse' : ''}`}>
-                        <Avatar className="h-8 w-8 flex-shrink-0 ring-2 ring-background">
-                          <AvatarImage src={msg.profiles?.avatar_url || undefined} />
-                          <AvatarFallback className="text-xs bg-primary/10">
-                            {(msg.profiles?.display_name || msg.profiles?.username || '?')[0].toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className={`flex flex-col max-w-[75%] ${isMe ? 'items-end' : ''}`}>
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xs font-medium">
-                              {msg.profiles?.display_name || msg.profiles?.username}
-                            </span>
-                            <span className="text-[10px] text-muted-foreground">
-                              {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true })}
-                            </span>
-                          </div>
-                          <div
-                            className={`rounded-2xl px-4 py-2 text-sm ${
-                              isMe
-                                ? 'bg-primary text-primary-foreground rounded-br-md'
-                                : 'bg-muted rounded-bl-md'
-                            }`}
-                          >
-                            {msg.message}
+            <ScrollArea className="h-[400px]" ref={scrollAreaRef}>
+              <div className="p-4">
+                {isLoading ? (
+                  <div className="flex items-center justify-center h-full py-20">
+                    <div className="animate-pulse text-muted-foreground">Loading...</div>
+                  </div>
+                ) : messages.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full py-20 text-muted-foreground text-sm">
+                    <MessageCircle className="h-12 w-12 mb-4 opacity-30" />
+                    <p>No messages yet.</p>
+                    <p className="text-xs">Be the first to say hello! 👋</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {messages.map((msg) => {
+                      const isMe = msg.user_id === user.id;
+                      return (
+                        <div key={msg.id} className={`flex gap-2 ${isMe ? 'flex-row-reverse' : ''}`}>
+                          <Avatar className="h-8 w-8 flex-shrink-0 ring-2 ring-background">
+                            <AvatarImage src={msg.profiles?.avatar_url || undefined} />
+                            <AvatarFallback className="text-xs bg-primary/10">
+                              {(msg.profiles?.display_name || msg.profiles?.username || '?')[0].toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className={`flex flex-col max-w-[75%] ${isMe ? 'items-end' : ''}`}>
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-xs font-medium">
+                                {msg.profiles?.display_name || msg.profiles?.username}
+                              </span>
+                              <span className="text-[10px] text-muted-foreground">
+                                {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true })}
+                              </span>
+                            </div>
+                            <div
+                              className={`rounded-2xl px-4 py-2 text-sm ${
+                                isMe
+                                  ? 'bg-primary text-primary-foreground rounded-br-md'
+                                  : 'bg-muted rounded-bl-md'
+                              }`}
+                            >
+                              {msg.message}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+                      );
+                    })}
+                    <div ref={messagesEndRef} />
+                  </div>
+                )}
+              </div>
             </ScrollArea>
 
             <div className="p-4 border-t bg-muted/30">
@@ -175,9 +175,8 @@ export function GlobalChat() {
                 <Input
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
-                  onKeyPress={handleKeyPress}
+                  onKeyDown={handleKeyPress}
                   placeholder="Type a message..."
-                  disabled={sendMessage.isPending}
                   className="flex-1 rounded-full bg-background"
                 />
 
@@ -187,11 +186,7 @@ export function GlobalChat() {
                   disabled={!message.trim() || sendMessage.isPending}
                   className="h-9 w-9 rounded-full flex-shrink-0"
                 >
-                  {sendMessage.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4" />
-                  )}
+                  <Send className="h-4 w-4" />
                 </Button>
               </div>
             </div>
