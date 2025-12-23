@@ -41,19 +41,19 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
-      <div className="flex h-14 items-center justify-between gap-4 px-4">
+      <div className="flex h-14 items-center justify-between gap-2 sm:gap-4 px-2 sm:px-4 max-w-full overflow-hidden">
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-2 font-bold text-xl text-primary">
+        <Link to="/" className="flex items-center gap-2 font-bold text-xl text-primary shrink-0">
           {appSettings?.app_logo_url ? (
-            <img src={appSettings.app_logo_url} alt={appSettings?.app_name || 'Forum'} className="h-7 w-7 object-contain" />
+            <img src={appSettings.app_logo_url} alt={appSettings?.app_name || 'Forum'} className="h-6 w-6 sm:h-7 sm:w-7 object-contain" />
           ) : (
-            <MessageSquare className="h-6 w-6" />
+            <MessageSquare className="h-5 w-5 sm:h-6 sm:w-6" />
           )}
-          <span className="hidden sm:inline">{appSettings?.app_name || 'Forum'}</span>
+          <span className="hidden sm:inline text-base sm:text-xl">{appSettings?.app_name || 'Forum'}</span>
         </Link>
 
         {/* Search Bar */}
-        <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-md">
+        <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-md min-w-0">
           <div className="relative w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -67,20 +67,20 @@ export function Header() {
         </form>
 
         {/* Right Actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           {/* Theme Toggle */}
-          <Button variant="ghost" size="icon" onClick={toggleTheme}>
-            {theme === 'light' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+          <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={toggleTheme}>
+            {theme === 'light' ? <Moon className="h-4 w-4 sm:h-5 sm:w-5" /> : <Sun className="h-4 w-4 sm:h-5 sm:w-5" />}
           </Button>
 
           {user ? (
             <>
               {/* Notifications */}
               <Link to="/notifications">
-                <Button variant="ghost" size="icon" className="relative">
-                  <Bell className="h-5 w-5" />
+                <Button variant="ghost" size="icon" className="relative h-8 w-8 sm:h-9 sm:w-9">
+                  <Bell className="h-4 w-4 sm:h-5 sm:w-5" />
                   {unreadNotifications > 0 && (
-                    <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">
+                    <Badge className="absolute -top-1 -right-1 h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center p-0 text-[10px] sm:text-xs">
                       {unreadNotifications > 99 ? '99+' : unreadNotifications}
                     </Badge>
                   )}
@@ -89,10 +89,10 @@ export function Header() {
 
               {/* Messages */}
               <Link to="/messages">
-                <Button variant="ghost" size="icon" className="relative">
-                  <MessageSquare className="h-5 w-5" />
+                <Button variant="ghost" size="icon" className="relative h-8 w-8 sm:h-9 sm:w-9">
+                  <MessageSquare className="h-4 w-4 sm:h-5 sm:w-5" />
                   {unreadMessages > 0 && (
-                    <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">
+                    <Badge className="absolute -top-1 -right-1 h-4 w-4 sm:h-5 sm:w-5 flex items-center justify-center p-0 text-[10px] sm:text-xs">
                       {unreadMessages > 99 ? '99+' : unreadMessages}
                     </Badge>
                   )}
@@ -102,10 +102,10 @@ export function Header() {
               {/* User Menu */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-9 w-9 rounded-full">
-                    <Avatar className="h-9 w-9">
+                  <Button variant="ghost" className="relative h-8 w-8 sm:h-9 sm:w-9 rounded-full p-0">
+                    <Avatar className="h-8 w-8 sm:h-9 sm:w-9">
                       <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.username} />
-                      <AvatarFallback>{profile?.username?.[0]?.toUpperCase() || 'U'}</AvatarFallback>
+                      <AvatarFallback className="text-xs sm:text-sm">{profile?.username?.[0]?.toUpperCase() || 'U'}</AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
@@ -154,11 +154,11 @@ export function Header() {
               </DropdownMenu>
             </>
           ) : (
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" asChild>
+            <div className="flex items-center gap-1 sm:gap-2">
+              <Button variant="ghost" size="sm" className="text-xs sm:text-sm px-2 sm:px-3" asChild>
                 <Link to="/auth">Sign In</Link>
               </Button>
-              <Button asChild>
+              <Button size="sm" className="text-xs sm:text-sm px-2 sm:px-3" asChild>
                 <Link to="/auth?mode=signup">Sign Up</Link>
               </Button>
             </div>
