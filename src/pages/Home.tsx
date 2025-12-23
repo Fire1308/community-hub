@@ -45,39 +45,39 @@ export default function HomePage() {
 
   return (
     <Layout>
-      <div className="container py-6 md:py-8">
+      <div className="container px-3 sm:px-4 py-4 sm:py-6 md:py-8 max-w-full overflow-hidden">
         {/* Hero Section */}
-        <div className="text-center mb-8 md:mb-12">
-          <h1 className="text-3xl md:text-4xl font-bold mb-4">
+        <div className="text-center mb-6 sm:mb-8 md:mb-12">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4 px-2">
             Welcome to the Community
           </h1>
-          <p className="text-lg text-muted-foreground mb-6 max-w-2xl mx-auto">
+          <p className="text-sm sm:text-base md:text-lg text-muted-foreground mb-4 sm:mb-6 max-w-2xl mx-auto px-2">
             Join discussions, share knowledge, and connect with others. Your voice matters here.
           </p>
           {user ? (
-            <Button size="lg" onClick={() => setCreateDialogOpen(true)}>
-              <Plus className="h-5 w-5 mr-2" /> Start a Discussion
+            <Button size="default" className="sm:text-base" onClick={() => setCreateDialogOpen(true)}>
+              <Plus className="h-4 w-4 sm:h-5 sm:w-5 mr-2" /> Start a Discussion
             </Button>
           ) : (
-            <Button size="lg" asChild>
+            <Button size="default" className="sm:text-base" asChild>
               <Link to="/auth">Join the Community</Link>
             </Button>
           )}
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-6 md:gap-8">
+        <div className="grid lg:grid-cols-3 gap-4 sm:gap-6 md:gap-8">
           {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-4 sm:space-y-6 min-w-0">
             {/* Pinned Threads Section - Separate from Recent Discussions */}
             {pinnedThreads.length > 0 && (
               <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Pin className="h-5 w-5 text-primary" />
+                <CardHeader className="pb-3 px-3 sm:px-6">
+                  <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                    <Pin className="h-4 w-4 sm:h-5 sm:w-5 text-primary shrink-0" />
                     Pinned
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3">
+                <CardContent className="space-y-3 px-3 sm:px-6">
                   {pinnedThreads.map(thread => (
                     <ThreadCard key={thread.id} thread={thread} />
                   ))}
@@ -86,32 +86,32 @@ export default function HomePage() {
             )}
 
             {/* Thread Filters */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <h2 className="text-xl font-semibold">Recent Discussions</h2>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+              <h2 className="text-lg sm:text-xl font-semibold">Recent Discussions</h2>
               <Tabs value={filter} onValueChange={(v) => { setFilter(v as ThreadFilter); setPage(1); }}>
-                <TabsList>
-                  <TabsTrigger value="latest" className="gap-1">
-                    <Clock className="h-4 w-4" />
-                    <span className="hidden sm:inline">Latest</span>
+                <TabsList className="h-9">
+                  <TabsTrigger value="latest" className="gap-1 text-xs sm:text-sm px-2 sm:px-3">
+                    <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="hidden xs:inline sm:inline">Latest</span>
                   </TabsTrigger>
-                  <TabsTrigger value="trending" className="gap-1">
-                    <TrendingUp className="h-4 w-4" />
-                    <span className="hidden sm:inline">Trending</span>
+                  <TabsTrigger value="trending" className="gap-1 text-xs sm:text-sm px-2 sm:px-3">
+                    <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="hidden xs:inline sm:inline">Trending</span>
                   </TabsTrigger>
-                  <TabsTrigger value="unanswered" className="gap-1">
-                    <HelpCircle className="h-4 w-4" />
-                    <span className="hidden sm:inline">Unanswered</span>
+                  <TabsTrigger value="unanswered" className="gap-1 text-xs sm:text-sm px-2 sm:px-3">
+                    <HelpCircle className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="hidden xs:inline sm:inline">Unanswered</span>
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
             </div>
 
             {/* Regular Threads List */}
-            <div className="space-y-3">
+            <div className="space-y-2 sm:space-y-3">
               {threadsLoading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <Card key={i} className="animate-pulse">
-                    <CardContent className="p-4 h-24" />
+                    <CardContent className="p-3 sm:p-4 h-20 sm:h-24" />
                   </Card>
                 ))
               ) : regularThreads.length > 0 ? (

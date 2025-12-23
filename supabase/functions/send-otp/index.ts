@@ -19,21 +19,78 @@ interface OTPRequest {
 interface VerifyOTPRequest {
   email: string;
   otp: string;
-  password: string; // Password sent again for verification
+  password: string;
+}
+
+// Rate limiting configuration
+const RATE_LIMIT_SEND = {
+  maxAttempts: 3, // Max OTP send requests per window
+  windowMs: 60 * 60 * 1000, // 1 hour in milliseconds
+};
+
+const RATE_LIMIT_VERIFY = {
+  maxAttempts: 5, // Max verify attempts per window
+  windowMs: 15 * 60 * 1000, // 15 minutes in milliseconds
+};
+
+// In-memory rate limit store (resets on function restart)
+// For production, consider using a database table or Redis
+const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
+
+function checkRateLimit(key: string, config: { maxAttempts: number; windowMs: number }): { allowed: boolean; retryAfter?: number } {
+  const now = Date.now();
+  const record = rateLimitStore.get(key);
+
+  // Clean up expired entries
+  if (record && now > record.resetTime) {
+    rateLimitStore.delete(key);
+  }
+
+  const current = rateLimitStore.get(key);
+
+  if (!current) {
+    // First request, create new record
+    rateLimitStore.set(key, {
+      count: 1,
+      resetTime: now + config.windowMs,
+    });
+    return { allowed: true };
+  }
+
+  if (current.count >= config.maxAttempts) {
+    const retryAfter = Math.ceil((current.resetTime - now) / 1000);
+    return { allowed: false, retryAfter };
+  }
+
+  // Increment counter
+  current.count++;
+  rateLimitStore.set(key, current);
+  return { allowed: true };
 }
 
 function generateOTP(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-// Hash OTP code for secure storage
 async function hashOTP(otp: string): Promise<string> {
   return await hash(otp);
 }
 
-// Verify OTP against stored hash
 async function verifyOTP(otp: string, hashedOTP: string): Promise<boolean> {
   return await compare(otp, hashedOTP);
+}
+
+// Get client IP from request headers
+function getClientIP(req: Request): string {
+  const forwarded = req.headers.get("x-forwarded-for");
+  if (forwarded) {
+    return forwarded.split(",")[0].trim();
+  }
+  const realIP = req.headers.get("x-real-ip");
+  if (realIP) {
+    return realIP;
+  }
+  return "unknown";
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -48,6 +105,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const url = new URL(req.url);
     const action = url.searchParams.get("action");
+    const clientIP = getClientIP(req);
 
     if (action === "send") {
       const { email, username, password }: OTPRequest = await req.json();
@@ -57,6 +115,49 @@ const handler = async (req: Request): Promise<Response> => {
         return new Response(
           JSON.stringify({ error: "Missing required fields" }),
           { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+
+      // Rate limit check - by email and IP
+      const emailRateKey = `send:email:${email.toLowerCase()}`;
+      const ipRateKey = `send:ip:${clientIP}`;
+
+      const emailRateCheck = checkRateLimit(emailRateKey, RATE_LIMIT_SEND);
+      const ipRateCheck = checkRateLimit(ipRateKey, { ...RATE_LIMIT_SEND, maxAttempts: 10 }); // Higher limit for IP
+
+      if (!emailRateCheck.allowed) {
+        console.log(`Rate limit exceeded for email: ${email}`);
+        return new Response(
+          JSON.stringify({ 
+            error: "Too many requests. Please try again later.",
+            retryAfter: emailRateCheck.retryAfter
+          }),
+          { 
+            status: 429, 
+            headers: { 
+              "Content-Type": "application/json", 
+              "Retry-After": String(emailRateCheck.retryAfter),
+              ...corsHeaders 
+            } 
+          }
+        );
+      }
+
+      if (!ipRateCheck.allowed) {
+        console.log(`Rate limit exceeded for IP: ${clientIP}`);
+        return new Response(
+          JSON.stringify({ 
+            error: "Too many requests from your network. Please try again later.",
+            retryAfter: ipRateCheck.retryAfter
+          }),
+          { 
+            status: 429, 
+            headers: { 
+              "Content-Type": "application/json", 
+              "Retry-After": String(ipRateCheck.retryAfter),
+              ...corsHeaders 
+            } 
+          }
         );
       }
 
@@ -120,14 +221,13 @@ const handler = async (req: Request): Promise<Response> => {
         .eq("email", email);
 
       // Store verification data with HASHED OTP
-      // NOTE: We no longer store password - user must provide it again during verification
       const { error: insertError } = await supabase
         .from("email_verifications")
         .insert({
           email,
-          otp_code: hashedOTP, // Store hashed OTP, not plaintext
+          otp_code: hashedOTP,
           username,
-          password_hash: "REDACTED", // Don't store password at all
+          password_hash: "REDACTED",
         });
 
       if (insertError) {
@@ -158,7 +258,7 @@ const handler = async (req: Request): Promise<Response> => {
         throw new Error("Failed to send email");
       }
 
-      console.log("OTP sent successfully to:", email);
+      console.log("OTP sent successfully to:", email, "from IP:", clientIP);
 
       return new Response(
         JSON.stringify({ success: true, message: "OTP sent" }),
@@ -173,6 +273,28 @@ const handler = async (req: Request): Promise<Response> => {
         return new Response(
           JSON.stringify({ error: "Missing required fields" }),
           { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+
+      // Rate limit check for verification attempts
+      const verifyRateKey = `verify:email:${email.toLowerCase()}`;
+      const verifyRateCheck = checkRateLimit(verifyRateKey, RATE_LIMIT_VERIFY);
+
+      if (!verifyRateCheck.allowed) {
+        console.log(`Verify rate limit exceeded for email: ${email}`);
+        return new Response(
+          JSON.stringify({ 
+            error: "Too many verification attempts. Please request a new code.",
+            retryAfter: verifyRateCheck.retryAfter
+          }),
+          { 
+            status: 429, 
+            headers: { 
+              "Content-Type": "application/json", 
+              "Retry-After": String(verifyRateCheck.retryAfter),
+              ...corsHeaders 
+            } 
+          }
         );
       }
 
@@ -196,17 +318,20 @@ const handler = async (req: Request): Promise<Response> => {
       // Verify OTP against stored hash
       const isValidOTP = await verifyOTP(otp, verification.otp_code);
       if (!isValidOTP) {
-        console.log("OTP verification failed for:", email);
+        console.log("OTP verification failed for:", email, "from IP:", clientIP);
         return new Response(
           JSON.stringify({ error: "Invalid or expired code" }),
           { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
       }
 
-      // Create the actual user account with the password provided during verification
+      // Clear rate limit on successful verification
+      rateLimitStore.delete(`verify:email:${email.toLowerCase()}`);
+
+      // Create the actual user account
       const { data: authData, error: authError } = await supabase.auth.admin.createUser({
         email: verification.email,
-        password: password, // Use password from verification request
+        password: password,
         email_confirm: true,
         user_metadata: {
           username: verification.username,
@@ -222,7 +347,7 @@ const handler = async (req: Request): Promise<Response> => {
         );
       }
 
-      // Mark as verified and delete the record
+      // Delete the verification record
       await supabase
         .from("email_verifications")
         .delete()

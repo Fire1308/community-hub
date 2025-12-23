@@ -69,66 +69,65 @@ export function ThreadCard({ thread, showBookmarkButton = true }: ThreadCardProp
   return (
     <Link to={`/thread/${thread.id}`}>
       <Card className="hover:shadow-md transition-shadow cursor-pointer group relative">
-        <CardContent className="p-4">
-          <div className="flex gap-4">
+        <CardContent className="p-3 sm:p-4">
+          <div className="flex gap-2 sm:gap-4">
             {/* Author Avatar */}
-            <Avatar className="h-10 w-10 shrink-0">
+            <Avatar className="h-8 w-8 sm:h-10 sm:w-10 shrink-0">
               <AvatarImage src={thread.author?.avatar_url || undefined} />
-              <AvatarFallback>
+              <AvatarFallback className="text-xs sm:text-sm">
                 {thread.author?.username?.[0]?.toUpperCase() || 'U'}
               </AvatarFallback>
             </Avatar>
 
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 overflow-hidden">
               {/* Title with badges */}
-              <div className="flex flex-wrap items-center gap-2 mb-1">
+              <div className="flex flex-wrap items-center gap-1 sm:gap-2 mb-1">
                 {thread.is_pinned && (
-                  <Badge variant="secondary" className="shrink-0">
-                    <Pin className="h-3 w-3 mr-1" /> Pinned
+                  <Badge variant="secondary" className="shrink-0 text-[10px] sm:text-xs px-1.5 sm:px-2 py-0 h-5">
+                    <Pin className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-0.5 sm:mr-1" /> <span className="hidden xs:inline">Pinned</span>
                   </Badge>
                 )}
                 {thread.is_locked && (
-                  <Badge variant="outline" className="shrink-0">
-                    <Lock className="h-3 w-3 mr-1" /> Locked
+                  <Badge variant="outline" className="shrink-0 text-[10px] sm:text-xs px-1.5 sm:px-2 py-0 h-5">
+                    <Lock className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-0.5 sm:mr-1" /> <span className="hidden xs:inline">Locked</span>
                   </Badge>
                 )}
                 {thread.is_solved && (
-                  <Badge className="bg-green-500/10 text-green-600 shrink-0">
-                    <CheckCircle className="h-3 w-3 mr-1" /> Solved
+                  <Badge className="bg-green-500/10 text-green-600 shrink-0 text-[10px] sm:text-xs px-1.5 sm:px-2 py-0 h-5">
+                    <CheckCircle className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-0.5 sm:mr-1" /> <span className="hidden xs:inline">Solved</span>
                   </Badge>
                 )}
-                <h3 className="font-semibold text-foreground group-hover:text-primary transition-colors line-clamp-1">
-                  {thread.title}
-                </h3>
               </div>
+              <h3 className="font-semibold text-sm sm:text-base text-foreground group-hover:text-primary transition-colors line-clamp-2 sm:line-clamp-1 break-words">
+                {thread.title}
+              </h3>
 
               {/* Author & Category */}
-              <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground mb-2">
-                <span className="flex items-center gap-1.5">
-                  by <span className="font-medium text-foreground">{thread.author?.display_name || thread.author?.username}</span>
+              <div className="flex flex-wrap items-center gap-1 sm:gap-2 text-xs sm:text-sm text-muted-foreground mb-1.5 sm:mb-2">
+                <span className="flex items-center gap-1 truncate max-w-[150px] sm:max-w-none">
+                  <span className="hidden sm:inline">by</span> <span className="font-medium text-foreground truncate">{thread.author?.display_name || thread.author?.username}</span>
                   <RoleBadge role={authorRole} showLabel={false} />
                 </span>
                 {thread.category && (
-                  <>
-                    <span>in</span>
-                    <Badge variant="outline" className="font-normal">
-                      {thread.category.icon} {thread.category.name}
-                    </Badge>
-                  </>
+                  <Badge variant="outline" className="font-normal text-[10px] sm:text-xs shrink-0 max-w-[100px] sm:max-w-none truncate">
+                    <span className="truncate">{thread.category.icon} {thread.category.name}</span>
+                  </Badge>
                 )}
               </div>
 
               {/* Stats */}
-              <div className="flex items-center gap-4 text-xs text-muted-foreground">
+              <div className="flex items-center gap-2 sm:gap-4 text-[10px] sm:text-xs text-muted-foreground flex-wrap">
                 <span className="flex items-center gap-1">
-                  <MessageSquare className="h-3 w-3" />
-                  {thread.reply_count} replies
+                  <MessageSquare className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                  <span>{thread.reply_count}</span>
+                  <span className="hidden sm:inline">replies</span>
                 </span>
                 <span className="flex items-center gap-1">
-                  <Eye className="h-3 w-3" />
-                  {thread.view_count} views
+                  <Eye className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                  <span>{thread.view_count}</span>
+                  <span className="hidden sm:inline">views</span>
                 </span>
-                <span>
+                <span className="hidden xs:inline">
                   {formatDistanceToNow(new Date(thread.last_activity_at || thread.created_at), { addSuffix: true })}
                 </span>
               </div>

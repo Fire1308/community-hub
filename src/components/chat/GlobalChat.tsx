@@ -106,17 +106,17 @@ export function GlobalChat() {
   };
 
   return (
-    <div className="fixed bottom-4 left-4 z-50">
+    <div className="fixed bottom-3 sm:bottom-4 left-3 sm:left-4 z-50">
       {!isOpen ? (
         <Button
           onClick={() => setIsOpen(true)}
           size="lg"
-          className="rounded-full h-14 w-14 shadow-lg hover:scale-105 transition-transform bg-gradient-to-br from-primary to-primary/80"
+          className="rounded-full h-12 w-12 sm:h-14 sm:w-14 shadow-lg hover:scale-105 transition-transform bg-gradient-to-br from-primary to-primary/80"
         >
-          <MessageCircle className="h-6 w-6" />
+          <MessageCircle className="h-5 w-5 sm:h-6 sm:w-6" />
         </Button>
       ) : (
-        <Card className="w-[350px] sm:w-[400px] shadow-2xl animate-in slide-in-from-bottom-4 border-primary/20">
+        <Card className="w-[calc(100vw-24px)] max-w-[350px] sm:w-[400px] shadow-2xl animate-in slide-in-from-bottom-4 border-primary/20">
           <CardHeader className="flex flex-row items-center justify-between p-4 border-b bg-gradient-to-r from-primary/10 to-transparent">
             <CardTitle className="text-base flex items-center gap-2">
               <MessageCircle className="h-4 w-4 text-primary" />
