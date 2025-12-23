@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
+import { hash, compare } from "https://deno.land/x/bcrypt@v0.4.1/mod.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -18,10 +19,21 @@ interface OTPRequest {
 interface VerifyOTPRequest {
   email: string;
   otp: string;
+  password: string; // Password sent again for verification
 }
 
 function generateOTP(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+// Hash OTP code for secure storage
+async function hashOTP(otp: string): Promise<string> {
+  return await hash(otp);
+}
+
+// Verify OTP against stored hash
+async function verifyOTP(otp: string, hashedOTP: string): Promise<boolean> {
+  return await compare(otp, hashedOTP);
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -39,6 +51,39 @@ const handler = async (req: Request): Promise<Response> => {
 
     if (action === "send") {
       const { email, username, password }: OTPRequest = await req.json();
+
+      // Validate inputs
+      if (!email || !username || !password) {
+        return new Response(
+          JSON.stringify({ error: "Missing required fields" }),
+          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return new Response(
+          JSON.stringify({ error: "Invalid email format" }),
+          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+
+      // Validate password length
+      if (password.length < 6) {
+        return new Response(
+          JSON.stringify({ error: "Password must be at least 6 characters" }),
+          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+
+      // Validate username
+      if (username.length < 3 || username.length > 30) {
+        return new Response(
+          JSON.stringify({ error: "Username must be between 3 and 30 characters" }),
+          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
 
       // Check if email already registered
       const { data: existingUser } = await supabase.auth.admin.listUsers();
@@ -64,8 +109,9 @@ const handler = async (req: Request): Promise<Response> => {
         );
       }
 
-      // Generate OTP
+      // Generate and hash OTP
       const otp = generateOTP();
+      const hashedOTP = await hashOTP(otp);
 
       // Delete any existing verification for this email
       await supabase
@@ -73,17 +119,19 @@ const handler = async (req: Request): Promise<Response> => {
         .delete()
         .eq("email", email);
 
-      // Store verification data
+      // Store verification data with HASHED OTP
+      // NOTE: We no longer store password - user must provide it again during verification
       const { error: insertError } = await supabase
         .from("email_verifications")
         .insert({
           email,
-          otp_code: otp,
+          otp_code: hashedOTP, // Store hashed OTP, not plaintext
           username,
-          password_hash: password, // Will be used by Supabase Auth
+          password_hash: "REDACTED", // Don't store password at all
         });
 
       if (insertError) {
+        console.error("Insert error:", insertError);
         throw insertError;
       }
 
@@ -110,35 +158,55 @@ const handler = async (req: Request): Promise<Response> => {
         throw new Error("Failed to send email");
       }
 
+      console.log("OTP sent successfully to:", email);
+
       return new Response(
         JSON.stringify({ success: true, message: "OTP sent" }),
         { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
 
     } else if (action === "verify") {
-      const { email, otp }: VerifyOTPRequest = await req.json();
+      const { email, otp, password }: VerifyOTPRequest = await req.json();
+
+      // Validate inputs
+      if (!email || !otp || !password) {
+        return new Response(
+          JSON.stringify({ error: "Missing required fields" }),
+          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
 
       // Get verification record
       const { data: verification, error: verifyError } = await supabase
         .from("email_verifications")
         .select("*")
         .eq("email", email)
-        .eq("otp_code", otp)
         .eq("verified", false)
         .gt("expires_at", new Date().toISOString())
         .maybeSingle();
 
       if (verifyError || !verification) {
+        console.log("Verification lookup failed:", verifyError);
         return new Response(
           JSON.stringify({ error: "Invalid or expired code" }),
           { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
         );
       }
 
-      // Create the actual user account
+      // Verify OTP against stored hash
+      const isValidOTP = await verifyOTP(otp, verification.otp_code);
+      if (!isValidOTP) {
+        console.log("OTP verification failed for:", email);
+        return new Response(
+          JSON.stringify({ error: "Invalid or expired code" }),
+          { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+
+      // Create the actual user account with the password provided during verification
       const { data: authData, error: authError } = await supabase.auth.admin.createUser({
         email: verification.email,
-        password: verification.password_hash,
+        password: password, // Use password from verification request
         email_confirm: true,
         user_metadata: {
           username: verification.username,
@@ -154,10 +222,10 @@ const handler = async (req: Request): Promise<Response> => {
         );
       }
 
-      // Mark as verified
+      // Mark as verified and delete the record
       await supabase
         .from("email_verifications")
-        .update({ verified: true })
+        .delete()
         .eq("id", verification.id);
 
       // Create profile
@@ -172,6 +240,8 @@ const handler = async (req: Request): Promise<Response> => {
       if (profileError) {
         console.error("Profile error:", profileError);
       }
+
+      console.log("Account created successfully for:", email);
 
       return new Response(
         JSON.stringify({ success: true, message: "Account created" }),

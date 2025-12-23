@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { Bold, Italic, Link as LinkIcon, List, ListOrdered, Quote, Code, Image } from 'lucide-react';
+import { Bold, Italic, Link as LinkIcon, List, ListOrdered, Quote, Code } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-
+import { markdownToSafeHtml } from '@/lib/sanitize';
 interface MarkdownEditorProps {
   value: string;
   onChange: (value: string) => void;
@@ -44,18 +44,9 @@ export function MarkdownEditor({ value, onChange, placeholder = 'Write your cont
   const renderPreview = () => {
     if (!value) return <p className="text-muted-foreground">Nothing to preview</p>;
     
-    // Simple markdown to HTML conversion
-    let html = value
-      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*(.*?)\*/g, '<em>$1</em>')
-      .replace(/`(.*?)`/g, '<code class="bg-muted px-1 rounded">$1</code>')
-      .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" class="text-primary underline">$1</a>')
-      .replace(/^> (.*)/gm, '<blockquote class="border-l-4 border-primary pl-4 italic">$1</blockquote>')
-      .replace(/^- (.*)/gm, '<li>$1</li>')
-      .replace(/^(\d+)\. (.*)/gm, '<li>$2</li>')
-      .replace(/\n/g, '<br/>');
-
-    return <div dangerouslySetInnerHTML={{ __html: html }} />;
+    // Convert markdown to sanitized HTML
+    const safeHtml = markdownToSafeHtml(value);
+    return <div dangerouslySetInnerHTML={{ __html: safeHtml }} />;
   };
 
   return (
