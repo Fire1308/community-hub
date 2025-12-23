@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Bell, Search, Sun, Moon, User, Settings, LogOut, MessageSquare, Bookmark, Shield } from 'lucide-react';
+import { Bell, Search, Sun, Moon, User, Settings, LogOut, MessageSquare, Bookmark, Shield, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -17,6 +17,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useUnreadNotificationCount } from '@/hooks/useNotifications';
 import { useUnreadMessagesCount } from '@/hooks/useUnreadMessages';
 import { useAppSettings } from '@/hooks/useAppSettings';
+import { cn } from '@/lib/utils';
 
 export function Header() {
   const { user, profile, role, signOut } = useAuth();
@@ -25,12 +26,15 @@ export function Header() {
   const { data: unreadMessages = 0 } = useUnreadMessagesCount();
   const { data: appSettings } = useAppSettings();
   const [searchQuery, setSearchQuery] = useState('');
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const navigate = useNavigate();
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
       navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
+      setMobileSearchOpen(false);
+      setSearchQuery('');
     }
   };
 
@@ -41,6 +45,40 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/60">
+      {/* Mobile Search Bar - Full Width */}
+      <div
+        className={cn(
+          "md:hidden overflow-hidden transition-all duration-200 ease-in-out",
+          mobileSearchOpen ? "h-14 border-b border-border" : "h-0"
+        )}
+      >
+        <form onSubmit={handleSearch} className="flex items-center gap-2 h-14 px-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Search threads, posts, users..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 bg-background"
+              autoFocus={mobileSearchOpen}
+            />
+          </div>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="shrink-0"
+            onClick={() => {
+              setMobileSearchOpen(false);
+              setSearchQuery('');
+            }}
+          >
+            <X className="h-5 w-5" />
+          </Button>
+        </form>
+      </div>
+
       <div className="flex h-14 items-center justify-between gap-2 sm:gap-4 px-2 sm:px-4 max-w-full overflow-hidden">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2 font-bold text-xl text-primary shrink-0">
@@ -52,7 +90,7 @@ export function Header() {
           <span className="hidden sm:inline text-base sm:text-xl">{appSettings?.app_name || 'Forum'}</span>
         </Link>
 
-        {/* Search Bar */}
+        {/* Desktop Search Bar */}
         <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-md min-w-0">
           <div className="relative w-full">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -68,6 +106,16 @@ export function Header() {
 
         {/* Right Actions */}
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+          {/* Mobile Search Toggle */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 sm:h-9 sm:w-9 md:hidden"
+            onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
+          >
+            <Search className="h-4 w-4 sm:h-5 sm:w-5" />
+          </Button>
+
           {/* Theme Toggle */}
           <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9" onClick={toggleTheme}>
             {theme === 'light' ? <Moon className="h-4 w-4 sm:h-5 sm:w-5" /> : <Sun className="h-4 w-4 sm:h-5 sm:w-5" />}
@@ -87,8 +135,8 @@ export function Header() {
                 </Button>
               </Link>
 
-              {/* Messages */}
-              <Link to="/messages">
+              {/* Messages - Hidden on mobile (shown in bottom nav) */}
+              <Link to="/messages" className="hidden md:block">
                 <Button variant="ghost" size="icon" className="relative h-8 w-8 sm:h-9 sm:w-9">
                   <MessageSquare className="h-4 w-4 sm:h-5 sm:w-5" />
                   {unreadMessages > 0 && (
@@ -115,9 +163,9 @@ export function Header() {
                       <AvatarImage src={profile?.avatar_url || undefined} />
                       <AvatarFallback>{profile?.username?.[0]?.toUpperCase()}</AvatarFallback>
                     </Avatar>
-                    <div className="flex flex-col">
-                      <span className="text-sm font-medium">{profile?.display_name || profile?.username}</span>
-                      <span className="text-xs text-muted-foreground">@{profile?.username}</span>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-sm font-medium truncate">{profile?.display_name || profile?.username}</span>
+                      <span className="text-xs text-muted-foreground truncate">@{profile?.username}</span>
                     </div>
                   </div>
                   <DropdownMenuSeparator />
@@ -158,7 +206,7 @@ export function Header() {
               <Button variant="ghost" size="sm" className="text-xs sm:text-sm px-2 sm:px-3" asChild>
                 <Link to="/auth">Sign In</Link>
               </Button>
-              <Button size="sm" className="text-xs sm:text-sm px-2 sm:px-3" asChild>
+              <Button size="sm" className="text-xs sm:text-sm px-2 sm:px-3 hidden xs:inline-flex" asChild>
                 <Link to="/auth?mode=signup">Sign Up</Link>
               </Button>
             </div>
