@@ -191,7 +191,7 @@ export default function AuthPage() {
 
     try {
       const response = await supabase.functions.invoke('send-otp', {
-        body: { email: pendingEmail, otp: otpCode },
+        body: { email: pendingEmail, otp: otpCode, password },
         headers: { 'Content-Type': 'application/json' },
       });
 

@@ -17,6 +17,7 @@ import { usePostReactions, useAddReaction } from '@/hooks/usePosts';
 import { useUserRole } from '@/hooks/useUserRoles';
 import type { Post } from '@/lib/supabase-types';
 import { Link } from 'react-router-dom';
+import { sanitizeTextContent } from '@/lib/sanitize';
 
 interface PostCardProps {
   post: Post;
@@ -107,7 +108,7 @@ export function PostCard({
 
             {/* Content */}
             <div className="prose prose-sm dark:prose-invert max-w-none mb-4">
-              <div dangerouslySetInnerHTML={{ __html: post.content.replace(/\n/g, '<br/>') }} />
+              <div dangerouslySetInnerHTML={{ __html: sanitizeTextContent(post.content) }} />
             </div>
 
             {/* Actions */}
