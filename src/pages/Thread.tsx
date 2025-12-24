@@ -193,56 +193,57 @@ export default function ThreadPage() {
 
   return (
     <Layout>
-      <div className="container py-6">
+      <div className="container px-2 sm:px-4 py-4 sm:py-6 max-w-full">
         {/* Back Button & Breadcrumb */}
-        <div className="flex items-center gap-4 mb-6">
+        <div className="flex items-center gap-2 sm:gap-4 mb-4 sm:mb-6 flex-wrap">
           <BackButton fallbackPath={`/category/${thread.category?.slug}`} />
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-muted-foreground">
             <Link to="/" className="hover:text-foreground">Home</Link>
             <span>/</span>
-            <Link to={`/category/${thread.category?.slug}`} className="hover:text-foreground">
+            <Link to={`/category/${thread.category?.slug}`} className="hover:text-foreground truncate max-w-[100px] sm:max-w-none">
               {thread.category?.name}
             </Link>
           </div>
         </div>
 
         {/* Thread Header */}
-        <div className="mb-6">
-          <div className="flex flex-wrap items-start gap-3 mb-4">
+        <div className="mb-4 sm:mb-6">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-3">{thread.title}</h1>
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-3">
             {thread.is_pinned && (
-              <Badge variant="secondary">
-                <Pin className="h-3 w-3 mr-1" /> Pinned
+              <Badge variant="secondary" className="text-[10px] sm:text-xs px-1.5 sm:px-2 h-5">
+                <Pin className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-0.5" /> Pinned
               </Badge>
             )}
             {thread.is_locked && (
-              <Badge variant="outline">
-                <Lock className="h-3 w-3 mr-1" /> Locked
+              <Badge variant="outline" className="text-[10px] sm:text-xs px-1.5 sm:px-2 h-5">
+                <Lock className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-0.5" /> Locked
               </Badge>
             )}
             {thread.is_solved && (
-              <Badge className="bg-green-500/10 text-green-600">
-                <CheckCircle className="h-3 w-3 mr-1" /> Solved
+              <Badge className="bg-green-500/10 text-green-600 text-[10px] sm:text-xs px-1.5 sm:px-2 h-5">
+                <CheckCircle className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-0.5" /> Solved
               </Badge>
             )}
-            <h1 className="text-2xl md:text-3xl font-bold flex-1">{thread.title}</h1>
           </div>
 
           {/* Tags */}
           {tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-4">
+            <div className="flex flex-wrap gap-1.5 mb-3">
               {tags.map(tag => (
                 <Link key={tag.id} to={`/search?tag=${tag.slug}`}>
-                  <Badge variant="secondary">#{tag.name}</Badge>
+                  <Badge variant="secondary" className="text-[10px] sm:text-xs">#{tag.name}</Badge>
                 </Link>
               ))}
             </div>
           )}
 
           {/* Actions */}
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             <Button
               variant="outline"
               size="sm"
+              className="h-8 px-2 sm:px-3 text-xs sm:text-sm"
               onClick={async () => {
                 const result = await toggleBookmark.mutateAsync(threadId!);
                 toast({ title: result.added ? 'Bookmarked' : 'Bookmark removed' });
@@ -250,31 +251,32 @@ export default function ThreadPage() {
               disabled={!user || toggleBookmark.isPending}
             >
               {isBookmarked ? (
-                <><BookmarkCheck className="h-4 w-4 mr-1" /> Bookmarked</>
+                <><BookmarkCheck className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1" /> <span className="hidden xs:inline">Bookmarked</span></>
               ) : (
-                <><Bookmark className="h-4 w-4 mr-1" /> Bookmark</>
+                <><Bookmark className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1" /> Bookmark</>
               )}
             </Button>
             <Button
               variant="outline"
               size="sm"
+              className="h-8 px-2 sm:px-3 text-xs sm:text-sm"
               onClick={handleToggleFollow}
               disabled={!user || toggleFollow.isPending}
             >
               {isFollowing ? (
-                <><BellOff className="h-4 w-4 mr-1" /> Unfollow</>
+                <><BellOff className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1" /> <span className="hidden xs:inline">Unfollow</span></>
               ) : (
-                <><Bell className="h-4 w-4 mr-1" /> Follow</>
+                <><Bell className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1" /> Follow</>
               )}
             </Button>
-            <Button variant="outline" size="sm" onClick={handleShare}>
-              <Share2 className="h-4 w-4 mr-1" /> Share
+            <Button variant="outline" size="sm" className="h-8 px-2 sm:px-3 text-xs sm:text-sm" onClick={handleShare}>
+              <Share2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1" /> Share
             </Button>
 
             {(isAuthor || canModerate) && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" className="h-8 w-8 p-0">
                     <MoreHorizontal className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
@@ -314,7 +316,7 @@ export default function ThreadPage() {
         </div>
 
         {/* Posts */}
-        <div className="space-y-4 mb-6">
+        <div className="space-y-2 sm:space-y-4 mb-4 sm:mb-6">
           {postsLoading ? (
             Array.from({ length: 3 }).map((_, i) => (
               <Card key={i} className="animate-pulse">
