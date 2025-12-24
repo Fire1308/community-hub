@@ -23,6 +23,12 @@ export function PaginationControls({
 }: PaginationControlsProps) {
   if (totalPages <= 1) return null;
 
+  const handlePageChange = (page: number) => {
+    onPageChange(page);
+    // Smooth scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const getVisiblePages = () => {
     const pages: (number | 'ellipsis')[] = [];
     const maxVisible = 5;
@@ -73,7 +79,7 @@ export function PaginationControls({
       <PaginationContent>
         <PaginationItem>
           <PaginationPrevious
-            onClick={() => onPageChange(currentPage - 1)}
+            onClick={() => handlePageChange(currentPage - 1)}
             className={currentPage <= 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
           />
         </PaginationItem>
@@ -86,7 +92,7 @@ export function PaginationControls({
           ) : (
             <PaginationItem key={page}>
               <PaginationLink
-                onClick={() => onPageChange(page)}
+                onClick={() => handlePageChange(page)}
                 isActive={page === currentPage}
                 className="cursor-pointer"
               >
@@ -98,7 +104,7 @@ export function PaginationControls({
 
         <PaginationItem>
           <PaginationNext
-            onClick={() => onPageChange(currentPage + 1)}
+            onClick={() => handlePageChange(currentPage + 1)}
             className={currentPage >= totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
           />
         </PaginationItem>

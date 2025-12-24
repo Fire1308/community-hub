@@ -62,99 +62,101 @@ export function PostCard({
 
   return (
     <Card className={isFirstPost ? 'border-primary/20' : ''}>
-      <CardContent className="p-4 md:p-6">
-        <div className="flex gap-4">
+      <CardContent className="p-2.5 sm:p-4 md:p-6">
+        <div className="flex gap-2 sm:gap-3 md:gap-4">
           {/* Author Info */}
           <div className="shrink-0">
             <Link to={`/profile/${post.author?.username}`}>
-              <Avatar className="h-10 w-10 md:h-12 md:w-12">
+              <Avatar className="h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:w-12 ring-2 ring-primary/20">
                 <AvatarImage src={post.author?.avatar_url || undefined} />
-                <AvatarFallback>
+                <AvatarFallback className="text-xs sm:text-sm font-semibold bg-primary/10 text-primary">
                   {post.author?.username?.[0]?.toUpperCase() || 'U'}
                 </AvatarFallback>
               </Avatar>
             </Link>
           </div>
 
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 overflow-hidden">
             {/* Header */}
-            <div className="flex items-start justify-between gap-2 mb-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <Link to={`/profile/${post.author?.username}`} className="font-semibold hover:text-primary transition-colors">
+            <div className="flex items-start justify-between gap-1.5 sm:gap-2 mb-2 sm:mb-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                  <Link to={`/profile/${post.author?.username}`} className="font-semibold text-sm sm:text-base hover:text-primary transition-colors truncate max-w-[120px] sm:max-w-none">
                     {post.author?.display_name || post.author?.username}
                   </Link>
-                  <RoleBadge role={authorRole} />
+                  <RoleBadge role={authorRole} showLabel={false} />
                 </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <span>@{post.author?.username}</span>
+                <div className="flex items-center gap-1 sm:gap-2 text-[10px] sm:text-xs md:text-sm text-muted-foreground flex-wrap">
+                  <span className="truncate">@{post.author?.username}</span>
                   <span>•</span>
-                  <span>{formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}</span>
+                  <span className="whitespace-nowrap">{formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}</span>
                   {post.is_edited && (
                     <>
-                      <span>•</span>
-                      <span className="italic">edited</span>
+                      <span className="hidden xs:inline">•</span>
+                      <span className="italic hidden xs:inline">edited</span>
                     </>
                   )}
                 </div>
               </div>
 
               {post.is_solution && (
-                <Badge className="bg-green-500/10 text-green-600 shrink-0">
-                  <CheckCircle className="h-3 w-3 mr-1" /> Solution
+                <Badge className="bg-green-500/10 text-green-600 shrink-0 text-[10px] sm:text-xs px-1.5 sm:px-2 h-5">
+                  <CheckCircle className="h-2.5 w-2.5 sm:h-3 sm:w-3 mr-0.5" /> Solution
                 </Badge>
               )}
             </div>
 
             {/* Content */}
-            <div className="prose prose-sm dark:prose-invert max-w-none mb-4">
+            <div className="prose prose-sm dark:prose-invert max-w-none mb-3 sm:mb-4 text-sm sm:text-base break-words overflow-hidden">
               <div dangerouslySetInnerHTML={{ __html: sanitizeTextContent(post.content) }} />
             </div>
 
             {/* Actions */}
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-1 sm:gap-1.5">
               <Button
                 variant={userReactions.includes('like') ? 'default' : 'ghost'}
                 size="sm"
+                className="h-7 sm:h-8 px-2 text-xs sm:text-sm"
                 onClick={() => handleReaction('like')}
                 disabled={!user}
               >
-                <ThumbsUp className="h-4 w-4 mr-1" />
+                <ThumbsUp className="h-3 w-3 sm:h-4 sm:w-4 mr-0.5 sm:mr-1" />
                 {reactionCounts['like'] || 0}
               </Button>
               <Button
                 variant={userReactions.includes('love') ? 'default' : 'ghost'}
                 size="sm"
+                className="h-7 sm:h-8 px-2 text-xs sm:text-sm"
                 onClick={() => handleReaction('love')}
                 disabled={!user}
               >
-                <Heart className="h-4 w-4 mr-1" />
+                <Heart className="h-3 w-3 sm:h-4 sm:w-4 mr-0.5 sm:mr-1" />
                 {reactionCounts['love'] || 0}
               </Button>
 
               {user && onReply && (
-                <Button variant="ghost" size="sm" onClick={() => onReply(post)}>
-                  <MessageSquare className="h-4 w-4 mr-1" /> Reply
+                <Button variant="ghost" size="sm" className="h-7 sm:h-8 px-2 text-xs sm:text-sm" onClick={() => onReply(post)}>
+                  <MessageSquare className="h-3 w-3 sm:h-4 sm:w-4 mr-0.5 sm:mr-1" /> Reply
                 </Button>
               )}
 
               {user && onReply && (
-                <Button variant="ghost" size="sm" onClick={() => onReply(post)}>
-                  <Quote className="h-4 w-4 mr-1" /> Quote
+                <Button variant="ghost" size="sm" className="h-7 sm:h-8 px-2 text-xs sm:text-sm" onClick={() => onReply(post)}>
+                  <Quote className="h-3 w-3 sm:h-4 sm:w-4 mr-0.5 sm:mr-1" /> Quote
                 </Button>
               )}
 
               {canMarkSolution && !post.is_solution && !isFirstPost && (
-                <Button variant="ghost" size="sm" onClick={() => onMarkSolution?.(post)}>
-                  <CheckCircle className="h-4 w-4 mr-1" /> Mark as Solution
+                <Button variant="ghost" size="sm" className="h-7 sm:h-8 px-2 text-xs sm:text-sm hidden xs:flex" onClick={() => onMarkSolution?.(post)}>
+                  <CheckCircle className="h-3 w-3 sm:h-4 sm:w-4 mr-0.5 sm:mr-1" /> <span className="hidden sm:inline">Mark as</span> Solution
                 </Button>
               )}
 
               {(isAuthor || canModerate) && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm">
-                      <MoreHorizontal className="h-4 w-4" />
+                    <Button variant="ghost" size="sm" className="h-7 w-7 sm:h-8 sm:w-8 p-0">
+                      <MoreHorizontal className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">

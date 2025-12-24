@@ -38,8 +38,8 @@ export default function CategoriesPage() {
 
   return (
     <Layout>
-      <div className="container py-6 md:py-8">
-        <h1 className="text-3xl font-bold mb-6">Categories</h1>
+      <div className="container px-2 sm:px-4 py-6 md:py-8 max-w-full">
+        <h1 className="text-2xl sm:text-3xl font-bold mb-6">Categories</h1>
 
         {isLoading ? (
           <div className="grid gap-4 md:grid-cols-2">
@@ -74,7 +74,7 @@ export default function CategoriesPage() {
                         )}
                       </Button>
                     )}
-                    <div className={hasSubcategories ? 'flex-1' : 'flex-1 ml-10'}>
+                    <div className={hasSubcategories ? 'flex-1 min-w-0' : 'flex-1 min-w-0 ml-8 sm:ml-10'}>
                       <CategoryCard category={category} />
                     </div>
                   </div>
@@ -83,7 +83,7 @@ export default function CategoriesPage() {
                   {hasSubcategories && (
                     <Collapsible open={isOpen}>
                       <CollapsibleContent>
-                        <div className="ml-14 mt-3 pl-4 border-l-2 border-border space-y-3">
+                        <div className="ml-8 sm:ml-14 mt-3 pl-3 sm:pl-4 border-l-2 border-border space-y-3">
                           {subcategories.map(sub => (
                             <CategoryCard key={sub.id} category={sub} />
                           ))}

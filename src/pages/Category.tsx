@@ -63,60 +63,62 @@ export default function CategoryPage() {
 
   return (
     <Layout>
-      <div className="container py-6">
+      <div className="container px-2 sm:px-4 py-4 sm:py-6 max-w-full">
         {/* Back Button & Breadcrumb */}
-        <div className="flex items-center gap-4 mb-6">
+        <div className="flex items-center gap-2 sm:gap-4 mb-4 sm:mb-6 flex-wrap">
           <BackButton fallbackPath="/categories" />
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-muted-foreground">
             <Link to="/" className="hover:text-foreground">Home</Link>
             <span>/</span>
             <Link to="/categories" className="hover:text-foreground">Categories</Link>
             <span>/</span>
-            <span className="text-foreground">{category.name}</span>
+            <span className="text-foreground truncate max-w-[120px] sm:max-w-none">{category.name}</span>
           </div>
         </div>
 
         {/* Category Header */}
-        <Card className="mb-6">
-          <CardContent className="p-6">
-            <div className="flex items-start gap-4">
+        <Card className="mb-4 sm:mb-6">
+          <CardContent className="p-3 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
               <div
-                className="h-16 w-16 rounded-lg flex items-center justify-center text-3xl shrink-0"
+                className="h-12 w-12 sm:h-16 sm:w-16 rounded-lg flex items-center justify-center text-2xl sm:text-3xl shrink-0"
                 style={{ backgroundColor: category.color || '#3b82f6' + '20' }}
               >
                 {category.icon || '💬'}
               </div>
-              <div className="flex-1">
-                <h1 className="text-2xl font-bold mb-2">{category.name}</h1>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <h1 className="text-xl sm:text-2xl font-bold">{category.name}</h1>
+                  {user && !category.is_locked && (
+                    <Button size="sm" className="shrink-0 text-xs sm:text-sm" onClick={() => setCreateDialogOpen(true)}>
+                      <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1" /> <span className="hidden xs:inline">New</span> Thread
+                    </Button>
+                  )}
+                </div>
                 {category.description && (
-                  <p className="text-muted-foreground mb-4">{category.description}</p>
+                  <p className="text-sm text-muted-foreground mb-3">{category.description}</p>
                 )}
                 {category.rules && (
-                  <div className="bg-muted/50 rounded-lg p-4">
-                    <h3 className="font-semibold mb-2">Category Rules</h3>
-                    <p className="text-sm text-muted-foreground">{category.rules}</p>
+                  <div className="bg-muted/50 rounded-lg p-3">
+                    <h3 className="font-semibold mb-1 text-sm">Category Rules</h3>
+                    <p className="text-xs sm:text-sm text-muted-foreground">{category.rules}</p>
                   </div>
                 )}
               </div>
-              {user && !category.is_locked && (
-                <Button onClick={() => setCreateDialogOpen(true)}>
-                  <Plus className="h-4 w-4 mr-2" /> New Thread
-                </Button>
-              )}
             </div>
           </CardContent>
         </Card>
 
         {/* Pinned Threads Section - Separate card */}
         {pinnedThreads.length > 0 && (
-          <Card className="mb-6">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Pin className="h-5 w-5 text-primary" />
-                Pinned
+          <Card className="mb-4 sm:mb-6">
+            <CardHeader className="pb-2 sm:pb-3 px-3 sm:px-6">
+              <CardTitle className="text-base sm:text-lg flex items-center justify-between">
+                <span>Pinned</span>
+                <Pin className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-2 sm:space-y-3 px-2 sm:px-6">
               {pinnedThreads.map(thread => (
                 <ThreadCard key={thread.id} thread={thread} />
               ))}
@@ -124,20 +126,20 @@ export default function CategoryPage() {
           </Card>
         )}
 
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold">
+        <div className="space-y-3 sm:space-y-4">
+          <h2 className="text-lg sm:text-xl font-semibold">
             Threads {totalThreads > 0 && `(${totalThreads})`}
           </h2>
 
           {threadsLoading ? (
             Array.from({ length: 5 }).map((_, i) => (
               <Card key={i} className="animate-pulse">
-                <CardContent className="p-4 h-24" />
+                <CardContent className="p-3 sm:p-4 h-20 sm:h-24" />
               </Card>
             ))
           ) : regularThreads.length > 0 ? (
             <>
-              <div className="space-y-3">
+              <div className="space-y-2 sm:space-y-3">
                 {regularThreads.map(thread => (
                   <ThreadCard key={thread.id} thread={thread} />
                 ))}
