@@ -45,7 +45,7 @@ export default function HomePage() {
 
   return (
     <Layout>
-      <div className="container px-3 sm:px-4 py-4 sm:py-6 md:py-8 max-w-full overflow-hidden">
+      <div className="container px-1.5 sm:px-4 py-4 sm:py-6 md:py-8 max-w-full overflow-hidden">
         {/* Hero Section */}
         <div className="text-center mb-6 sm:mb-8 md:mb-12">
           <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-3 sm:mb-4 px-2">
@@ -72,9 +72,9 @@ export default function HomePage() {
             {pinnedThreads.length > 0 && (
               <Card>
                 <CardHeader className="pb-3 px-3 sm:px-6">
-                  <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                  <CardTitle className="text-base sm:text-lg flex items-center justify-between">
+                    <span>Pinned</span>
                     <Pin className="h-4 w-4 sm:h-5 sm:w-5 text-primary shrink-0" />
-                    Pinned
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3 px-3 sm:px-6">
