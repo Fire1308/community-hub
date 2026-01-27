@@ -12,6 +12,8 @@ import { TrendingTopics } from '@/components/forum/TrendingTopics';
 import { OnlineUsersCard } from '@/components/forum/OnlineUsersCard';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
 import { InfiniteScrollLoader } from '@/components/ui/infinite-scroll-loader';
+import { FloatingActionButton } from '@/components/ui/floating-action-button';
+import { ThreadCardSkeleton, CategoryCardSkeleton, SidebarCardSkeleton } from '@/components/ui/skeleton-shimmer';
 import { useCategories } from '@/hooks/useCategories';
 import { useInfiniteThreads } from '@/hooks/useInfiniteThreads';
 import { usePinnedThreads } from '@/hooks/usePinnedThreads';
@@ -121,9 +123,7 @@ export default function HomePage() {
               <div className="space-y-2 sm:space-y-3">
                 {threadsLoading ? (
                   Array.from({ length: 5 }).map((_, i) => (
-                    <Card key={i} className="animate-pulse">
-                      <CardContent className="p-3 sm:p-4 h-20 sm:h-24" />
-                    </Card>
+                    <ThreadCardSkeleton key={i} />
                   ))
                 ) : regularThreads.length > 0 ? (
                   <>
@@ -168,7 +168,7 @@ export default function HomePage() {
                 <CardContent className="space-y-3">
                   {categoriesLoading ? (
                     Array.from({ length: 4 }).map((_, i) => (
-                      <div key={i} className="h-16 bg-muted rounded animate-pulse" />
+                      <CategoryCardSkeleton key={i} />
                     ))
                   ) : (
                     categories.slice(0, 4).map(category => (
@@ -218,6 +218,13 @@ export default function HomePage() {
           </div>
         </div>
       </PullToRefresh>
+
+      {/* Floating Action Button for mobile */}
+      {user && (
+        <FloatingActionButton 
+          onClick={() => setCreateDialogOpen(true)} 
+        />
+      )}
 
       <CreateThreadDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
     </Layout>
