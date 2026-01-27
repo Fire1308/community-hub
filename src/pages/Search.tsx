@@ -48,57 +48,57 @@ export default function SearchPage() {
 
   return (
     <Layout>
-      <div className="container py-6 md:py-8">
-        <h1 className="text-3xl font-bold mb-6">
+      <div className="container px-2 sm:px-4 py-4 sm:py-8 max-w-full">
+        <h1 className="text-xl sm:text-3xl font-bold mb-4 sm:mb-6">
           {tagSlug ? `Tag: #${tagSlug}` : 'Search'}
         </h1>
 
         {/* Search Input */}
-        <div className="relative mb-6">
-          <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+        <div className="relative mb-4 sm:mb-6">
+          <SearchIcon className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
           <Input
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search threads, posts, users..."
-            className="pl-12 h-12 text-lg"
+            className="pl-9 sm:pl-12 h-10 sm:h-12 text-sm sm:text-lg"
             autoFocus
           />
         </div>
 
         {/* Filters */}
-        <Tabs value={searchType} onValueChange={(v) => { setSearchType(v as typeof searchType); setPage(1); }} className="mb-6">
-          <TabsList>
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="threads">Threads</TabsTrigger>
-            <TabsTrigger value="posts">Posts</TabsTrigger>
-            <TabsTrigger value="users">Users</TabsTrigger>
+        <Tabs value={searchType} onValueChange={(v) => { setSearchType(v as typeof searchType); setPage(1); }} className="mb-4 sm:mb-6">
+          <TabsList className="h-8 sm:h-9">
+            <TabsTrigger value="all" className="text-xs sm:text-sm px-2 sm:px-3">All</TabsTrigger>
+            <TabsTrigger value="threads" className="text-xs sm:text-sm px-2 sm:px-3">Threads</TabsTrigger>
+            <TabsTrigger value="posts" className="text-xs sm:text-sm px-2 sm:px-3">Posts</TabsTrigger>
+            <TabsTrigger value="users" className="text-xs sm:text-sm px-2 sm:px-3">Users</TabsTrigger>
           </TabsList>
         </Tabs>
 
         {/* Results */}
         {isLoading ? (
-          <div className="space-y-4">
+          <div className="space-y-2 sm:space-y-4">
             {Array.from({ length: 5 }).map((_, i) => (
               <Card key={i} className="animate-pulse">
-                <CardContent className="p-4 h-20" />
+                <CardContent className="p-3 sm:p-4 h-16 sm:h-20" />
               </Card>
             ))}
           </div>
         ) : !debouncedQuery && !tagSlug ? (
           <Card>
-            <CardContent className="p-12 text-center text-muted-foreground">
-              <SearchIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Enter a search term to find threads, posts, and users</p>
+            <CardContent className="p-8 sm:p-12 text-center text-muted-foreground">
+              <SearchIcon className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-3 sm:mb-4 opacity-50" />
+              <p className="text-sm sm:text-base">Enter a search term to find threads, posts, and users</p>
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             {/* Threads */}
             {(searchType === 'all' || searchType === 'threads') && results?.threads && results.threads.length > 0 && (
               <div>
-                <h2 className="text-xl font-semibold mb-4">Threads ({results.threads.length})</h2>
-                <div className="space-y-4">
+                <h2 className="text-base sm:text-xl font-semibold mb-2 sm:mb-4">Threads ({results.threads.length})</h2>
+                <div className="space-y-2 sm:space-y-4">
                   {paginatedThreads.map(thread => (
                     <ThreadCard key={thread.id} thread={thread} />
                   ))}
@@ -109,20 +109,20 @@ export default function SearchPage() {
             {/* Posts */}
             {(searchType === 'all' || searchType === 'posts') && results?.posts && results.posts.length > 0 && (
               <div>
-                <h2 className="text-xl font-semibold mb-4">Posts ({results.posts.length})</h2>
-                <div className="space-y-4">
+                <h2 className="text-base sm:text-xl font-semibold mb-2 sm:mb-4">Posts ({results.posts.length})</h2>
+                <div className="space-y-2 sm:space-y-4">
                   {paginatedPosts.map(post => (
-                    <Card key={post.id}>
-                      <CardContent className="p-4">
+                    <Card key={post.id} className="hover:shadow-md active:scale-[0.99] transition-all duration-200">
+                      <CardContent className="p-3 sm:p-4">
                         <Link to={`/thread/${post.thread_id}`} className="block">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Avatar className="h-6 w-6">
+                          <div className="flex items-center gap-2 mb-1.5 sm:mb-2">
+                            <Avatar className="h-5 w-5 sm:h-6 sm:w-6 ring-1 ring-primary/10">
                               <AvatarImage src={post.author?.avatar_url || undefined} />
-                              <AvatarFallback>{post.author?.username?.[0]?.toUpperCase()}</AvatarFallback>
+                              <AvatarFallback className="text-[8px] sm:text-[10px]">{post.author?.username?.[0]?.toUpperCase()}</AvatarFallback>
                             </Avatar>
-                            <span className="text-sm font-medium">{post.author?.username}</span>
+                            <span className="text-xs sm:text-sm font-medium">{post.author?.username}</span>
                           </div>
-                          <p className="text-sm line-clamp-2">{post.content}</p>
+                          <p className="text-xs sm:text-sm line-clamp-2">{post.content}</p>
                         </Link>
                       </CardContent>
                     </Card>
@@ -134,19 +134,19 @@ export default function SearchPage() {
             {/* Users */}
             {(searchType === 'all' || searchType === 'users') && results?.users && results.users.length > 0 && (
               <div>
-                <h2 className="text-xl font-semibold mb-4">Users ({results.users.length})</h2>
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <h2 className="text-base sm:text-xl font-semibold mb-2 sm:mb-4">Users ({results.users.length})</h2>
+                <div className="grid gap-2 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
                   {paginatedUsers.map(user => (
                     <Link key={user.id} to={`/profile/${user.username}`}>
-                      <Card className="hover:shadow-md transition-shadow">
-                        <CardContent className="p-4 flex items-center gap-3">
-                          <Avatar className="h-12 w-12">
+                      <Card className="hover:shadow-lg hover:scale-[1.01] active:scale-[0.99] transition-all duration-200">
+                        <CardContent className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3">
+                          <Avatar className="h-10 w-10 sm:h-12 sm:w-12 ring-2 ring-primary/10">
                             <AvatarImage src={user.avatar_url || undefined} />
-                            <AvatarFallback>{user.username?.[0]?.toUpperCase()}</AvatarFallback>
+                            <AvatarFallback className="text-sm bg-primary/10 text-primary">{user.username?.[0]?.toUpperCase()}</AvatarFallback>
                           </Avatar>
-                          <div>
-                            <div className="font-medium">{user.display_name || user.username}</div>
-                            <div className="text-sm text-muted-foreground">@{user.username}</div>
+                          <div className="min-w-0">
+                            <div className="font-medium text-sm sm:text-base truncate">{user.display_name || user.username}</div>
+                            <div className="text-xs sm:text-sm text-muted-foreground">@{user.username}</div>
                           </div>
                         </CardContent>
                       </Card>
@@ -162,7 +162,7 @@ export default function SearchPage() {
                 currentPage={page}
                 totalPages={totalPages}
                 onPageChange={setPage}
-                className="mt-6"
+                className="mt-4 sm:mt-6"
               />
             )}
 
@@ -170,9 +170,9 @@ export default function SearchPage() {
             {results && 
               (!results.threads?.length && !results.posts?.length && !results.users?.length) && (
               <Card>
-                <CardContent className="p-12 text-center text-muted-foreground">
-                  <p>No results found for "{debouncedQuery}"</p>
-                  <p className="text-sm mt-2">Try different keywords or check spelling</p>
+                <CardContent className="p-8 sm:p-12 text-center text-muted-foreground">
+                  <p className="text-sm sm:text-base">No results found for "{debouncedQuery}"</p>
+                  <p className="text-xs sm:text-sm mt-1 sm:mt-2">Try different keywords or check spelling</p>
                 </CardContent>
               </Card>
             )}

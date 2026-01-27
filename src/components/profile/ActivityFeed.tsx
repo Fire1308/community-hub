@@ -116,20 +116,23 @@ export function ActivityFeed({ userId }: ActivityFeedProps) {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">Recent Activity</CardTitle>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base sm:text-lg">Recent Activity</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-2 sm:space-y-4">
         {activities.map((activity) => (
-          <div key={activity.id} className="flex items-start gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
+          <div 
+            key={activity.id} 
+            className="flex items-start gap-2 sm:gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors duration-200"
+          >
+            <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-muted shrink-0">
               <ActivityIcon type={activity.type} />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm truncate">
+              <p className="text-xs sm:text-sm line-clamp-2">
                 <ActivityText activity={activity} />
               </p>
-              <p className="text-xs text-muted-foreground">
+              <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">
                 {formatDistanceToNow(new Date(activity.created_at), { addSuffix: true })}
               </p>
             </div>
