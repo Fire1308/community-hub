@@ -47,18 +47,17 @@ export default function CategoriesPage() {
   return (
     <Layout>
       <PullToRefresh onRefresh={handleRefresh} className="min-h-screen">
-        <div className="container px-3 sm:px-4 py-4 sm:py-6 md:py-8">
-          <div className="max-w-3xl mx-auto">
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 sm:mb-6 text-center">Categories</h1>
+        <div className="container px-1.5 sm:px-4 py-4 sm:py-6 md:py-8 max-w-full overflow-hidden">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 sm:mb-6 text-center">Categories</h1>
 
-            {isLoading ? (
-              <div className="grid gap-3 sm:gap-4">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <CategoryCardSkeleton key={i} />
-                ))}
-              </div>
-            ) : (
-            <div className="space-y-4 sm:space-y-6">
+          {isLoading ? (
+            <div className="space-y-3 sm:space-y-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <CategoryCardSkeleton key={i} />
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-3 sm:space-y-4">
               {parentCategories.map(category => {
                 const subcategories = getSubcategories(category.id);
                 const hasSubcategories = subcategories.length > 0;
@@ -66,58 +65,44 @@ export default function CategoriesPage() {
 
                 return (
                   <div key={category.id} className="w-full">
-                    {/* Use a 3-column layout so the card stays centered even when the left toggle exists */}
-                    <div className="grid grid-cols-[2.5rem_1fr_2.5rem] items-start gap-1.5 sm:gap-2">
-                      <div className="flex justify-center mt-2">
-                        {hasSubcategories ? (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 sm:h-8 sm:w-8"
-                            onClick={() => toggleCollapsed(category.id)}
-                            aria-label={isOpen ? 'Collapse' : 'Expand'}
-                          >
-                            {isOpen ? (
-                              <ChevronDown className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                            ) : (
-                              <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                            )}
-                          </Button>
-                        ) : (
-                          <div className="h-7 w-7 sm:h-8 sm:w-8" aria-hidden="true" />
-                        )}
-                      </div>
-
-                      <div className="min-w-0">
+                    <div className="flex items-start gap-1 sm:gap-2">
+                      {hasSubcategories && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 sm:h-8 sm:w-8 shrink-0 mt-2"
+                          onClick={() => toggleCollapsed(category.id)}
+                          aria-label={isOpen ? 'Collapse' : 'Expand'}
+                        >
+                          {isOpen ? (
+                            <ChevronDown className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                          ) : (
+                            <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                          )}
+                        </Button>
+                      )}
+                      <div className={hasSubcategories ? 'flex-1 min-w-0' : 'flex-1 min-w-0 ml-8 sm:ml-10'}>
                         <CategoryCard category={category} />
                       </div>
-
-                      {/* Right spacer to keep the center column visually centered */}
-                      <div className="h-7 w-7 sm:h-8 sm:w-8" aria-hidden="true" />
                     </div>
 
                     {/* Subcategories */}
                     {hasSubcategories && (
                       <Collapsible open={isOpen}>
                         <CollapsibleContent>
-                          <div className="grid grid-cols-[2.5rem_1fr_2.5rem]">
-                            <div aria-hidden="true" />
-                            <div className="mt-2 sm:mt-3 pl-2 sm:pl-3 border-l-2 border-border space-y-2 sm:space-y-3">
-                              {subcategories.map(sub => (
-                                <CategoryCard key={sub.id} category={sub} />
-                              ))}
-                            </div>
-                            <div aria-hidden="true" />
+                          <div className="ml-8 sm:ml-12 mt-2 sm:mt-3 pl-2 sm:pl-3 border-l-2 border-border space-y-2 sm:space-y-3">
+                            {subcategories.map(sub => (
+                              <CategoryCard key={sub.id} category={sub} />
+                            ))}
                           </div>
                         </CollapsibleContent>
                       </Collapsible>
                     )}
                   </div>
-              );
-            })}
-          </div>
-        )}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </PullToRefresh>
     </Layout>
