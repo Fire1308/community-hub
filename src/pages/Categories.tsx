@@ -47,16 +47,17 @@ export default function CategoriesPage() {
   return (
     <Layout>
       <PullToRefresh onRefresh={handleRefresh} className="min-h-screen">
-        <div className="container px-3 sm:px-4 py-4 sm:py-6 md:py-8 max-w-3xl mx-auto">
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 sm:mb-6 text-center">Categories</h1>
+        <div className="container px-3 sm:px-4 py-4 sm:py-6 md:py-8">
+          <div className="max-w-3xl mx-auto">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 sm:mb-6 text-center">Categories</h1>
 
-          {isLoading ? (
-            <div className="grid gap-3 sm:gap-4">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <CategoryCardSkeleton key={i} />
-              ))}
-            </div>
-          ) : (
+            {isLoading ? (
+              <div className="grid gap-3 sm:gap-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <CategoryCardSkeleton key={i} />
+                ))}
+              </div>
+            ) : (
             <div className="space-y-4 sm:space-y-6">
               {parentCategories.map(category => {
                 const subcategories = getSubcategories(category.id);
@@ -99,10 +100,11 @@ export default function CategoriesPage() {
                       </Collapsible>
                     )}
                   </div>
-                );
-              })}
-            </div>
-          )}
+              );
+            })}
+          </div>
+        )}
+          </div>
         </div>
       </PullToRefresh>
     </Layout>
