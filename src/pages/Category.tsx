@@ -9,6 +9,8 @@ import { CreateThreadDialog } from '@/components/forum/CreateThreadDialog';
 import { BackButton } from '@/components/layout/BackButton';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
 import { InfiniteScrollLoader } from '@/components/ui/infinite-scroll-loader';
+import { FloatingActionButton } from '@/components/ui/floating-action-button';
+import { ThreadCardSkeleton } from '@/components/ui/skeleton-shimmer';
 import { useCategory } from '@/hooks/useCategories';
 import { useInfiniteThreads } from '@/hooks/useInfiniteThreads';
 import { usePinnedThreads } from '@/hooks/usePinnedThreads';
@@ -144,9 +146,7 @@ export default function CategoryPage() {
 
             {threadsLoading ? (
               Array.from({ length: 5 }).map((_, i) => (
-                <Card key={i} className="animate-pulse">
-                  <CardContent className="p-3 sm:p-4 h-20 sm:h-24" />
-                </Card>
+                <ThreadCardSkeleton key={i} />
               ))
             ) : regularThreads.length > 0 ? (
               <>
@@ -176,6 +176,13 @@ export default function CategoryPage() {
           </div>
         </div>
       </PullToRefresh>
+
+      {/* Floating Action Button for mobile */}
+      {user && !category.is_locked && (
+        <FloatingActionButton 
+          onClick={() => setCreateDialogOpen(true)} 
+        />
+      )}
 
       <CreateThreadDialog
         open={createDialogOpen}

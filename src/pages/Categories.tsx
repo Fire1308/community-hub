@@ -3,10 +3,10 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { CategoryCard } from '@/components/forum/CategoryCard';
 import { useCategories } from '@/hooks/useCategories';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
+import { CategoryCardSkeleton } from '@/components/ui/skeleton-shimmer';
 import { useQueryClient } from '@tanstack/react-query';
 
 const STORAGE_KEY = 'forum-categories-collapsed';
@@ -47,15 +47,13 @@ export default function CategoriesPage() {
   return (
     <Layout>
       <PullToRefresh onRefresh={handleRefresh} className="min-h-screen">
-        <div className="container px-2 sm:px-4 py-4 sm:py-6 md:py-8 max-w-4xl mx-auto">
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 sm:mb-6 text-center sm:text-left">Categories</h1>
+        <div className="container px-3 sm:px-4 py-4 sm:py-6 md:py-8 max-w-3xl mx-auto">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 sm:mb-6 text-center">Categories</h1>
 
           {isLoading ? (
             <div className="grid gap-3 sm:gap-4">
               {Array.from({ length: 4 }).map((_, i) => (
-                <Card key={i} className="animate-pulse">
-                  <CardContent className="p-3 sm:p-4 h-20 sm:h-24" />
-                </Card>
+                <CategoryCardSkeleton key={i} />
               ))}
             </div>
           ) : (

@@ -624,3 +624,7 @@ All colors MUST be HSL.
   25% { transform: translateX(-5px); }
   75% { transform: translateX(5px); }
 }
+
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
