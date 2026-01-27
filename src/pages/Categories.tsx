@@ -66,35 +66,48 @@ export default function CategoriesPage() {
 
                 return (
                   <div key={category.id} className="w-full">
-                    <div className="flex items-start gap-1.5 sm:gap-2">
-                      {hasSubcategories && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 sm:h-8 sm:w-8 shrink-0 mt-2"
-                          onClick={() => toggleCollapsed(category.id)}
-                          aria-label={isOpen ? 'Collapse' : 'Expand'}
-                        >
-                          {isOpen ? (
-                            <ChevronDown className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                          ) : (
-                            <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                          )}
-                        </Button>
-                      )}
-                      <div className={hasSubcategories ? 'flex-1 min-w-0' : 'flex-1 min-w-0 ml-8 sm:ml-10'}>
+                    {/* Use a 3-column layout so the card stays centered even when the left toggle exists */}
+                    <div className="grid grid-cols-[2.5rem_1fr_2.5rem] items-start gap-1.5 sm:gap-2">
+                      <div className="flex justify-center mt-2">
+                        {hasSubcategories ? (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 sm:h-8 sm:w-8"
+                            onClick={() => toggleCollapsed(category.id)}
+                            aria-label={isOpen ? 'Collapse' : 'Expand'}
+                          >
+                            {isOpen ? (
+                              <ChevronDown className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            ) : (
+                              <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                            )}
+                          </Button>
+                        ) : (
+                          <div className="h-7 w-7 sm:h-8 sm:w-8" aria-hidden="true" />
+                        )}
+                      </div>
+
+                      <div className="min-w-0">
                         <CategoryCard category={category} />
                       </div>
+
+                      {/* Right spacer to keep the center column visually centered */}
+                      <div className="h-7 w-7 sm:h-8 sm:w-8" aria-hidden="true" />
                     </div>
 
                     {/* Subcategories */}
                     {hasSubcategories && (
                       <Collapsible open={isOpen}>
                         <CollapsibleContent>
-                          <div className="ml-8 sm:ml-12 mt-2 sm:mt-3 pl-2 sm:pl-3 border-l-2 border-border space-y-2 sm:space-y-3">
-                            {subcategories.map(sub => (
-                              <CategoryCard key={sub.id} category={sub} />
-                            ))}
+                          <div className="grid grid-cols-[2.5rem_1fr_2.5rem]">
+                            <div aria-hidden="true" />
+                            <div className="mt-2 sm:mt-3 pl-2 sm:pl-3 border-l-2 border-border space-y-2 sm:space-y-3">
+                              {subcategories.map(sub => (
+                                <CategoryCard key={sub.id} category={sub} />
+                              ))}
+                            </div>
+                            <div aria-hidden="true" />
                           </div>
                         </CollapsibleContent>
                       </Collapsible>
