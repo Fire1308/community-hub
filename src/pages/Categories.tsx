@@ -1,9 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
 import { Layout } from '@/components/layout/Layout';
 import { CategoryCard } from '@/components/forum/CategoryCard';
 import { useCategories } from '@/hooks/useCategories';
-import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
 import { CategoryCardSkeleton } from '@/components/ui/skeleton-shimmer';
@@ -65,32 +63,23 @@ export default function CategoriesPage() {
 
                 return (
                   <div key={category.id} className="w-full">
-                    <div className="flex items-start gap-1 sm:gap-2">
-                      {hasSubcategories && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7 sm:h-8 sm:w-8 shrink-0 mt-2"
-                          onClick={() => toggleCollapsed(category.id)}
-                          aria-label={isOpen ? 'Collapse' : 'Expand'}
-                        >
-                          {isOpen ? (
-                            <ChevronDown className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                          ) : (
-                            <ChevronRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                          )}
-                        </Button>
-                      )}
-                      <div className={hasSubcategories ? 'flex-1 min-w-0' : 'flex-1 min-w-0 ml-8 sm:ml-10'}>
-                        <CategoryCard category={category} />
-                      </div>
+                    {/* Category Card with optional expand/collapse */}
+                    <div 
+                      className={hasSubcategories ? 'cursor-pointer' : ''}
+                      onClick={hasSubcategories ? () => toggleCollapsed(category.id) : undefined}
+                    >
+                      <CategoryCard 
+                        category={category} 
+                        showExpandIcon={hasSubcategories}
+                        isExpanded={isOpen}
+                      />
                     </div>
 
                     {/* Subcategories */}
                     {hasSubcategories && (
                       <Collapsible open={isOpen}>
                         <CollapsibleContent>
-                          <div className="ml-8 sm:ml-12 mt-2 sm:mt-3 pl-2 sm:pl-3 border-l-2 border-border space-y-2 sm:space-y-3">
+                          <div className="ml-4 sm:ml-6 mt-2 sm:mt-3 pl-3 sm:pl-4 border-l-2 border-border space-y-2 sm:space-y-3">
                             {subcategories.map(sub => (
                               <CategoryCard key={sub.id} category={sub} />
                             ))}
