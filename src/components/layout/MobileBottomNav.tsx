@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { useUnreadMessagesCount } from '@/hooks/useUnreadMessages';
 import { cn } from '@/lib/utils';
+import { hapticFeedback } from '@/hooks/useHapticFeedback';
 
 const navItems = [
   { title: 'Home', url: '/', icon: Home },
@@ -41,6 +42,7 @@ export function MobileBottomNav() {
                 <Link
                   key="auth"
                   to="/auth"
+                  onClick={() => hapticFeedback('selection')}
                   className="flex flex-col items-center justify-center flex-1 h-full text-muted-foreground"
                 >
                   <item.icon className="h-5 w-5" />
@@ -58,6 +60,7 @@ export function MobileBottomNav() {
             <Link
               key={item.title}
               to={url}
+              onClick={() => hapticFeedback('selection')}
               className={cn(
                 "flex flex-col items-center justify-center flex-1 h-full transition-colors relative",
                 active ? "text-primary" : "text-muted-foreground hover:text-foreground"

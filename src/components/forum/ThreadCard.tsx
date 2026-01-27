@@ -11,6 +11,7 @@ import { useIsBookmarked, useToggleBookmark } from '@/hooks/useBookmarks';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
+import { hapticFeedback } from '@/hooks/useHapticFeedback';
 import type { Thread } from '@/lib/supabase-types';
 
 interface ThreadCardProps {
@@ -67,7 +68,7 @@ export function ThreadCard({ thread, showBookmarkButton = true }: ThreadCardProp
   };
 
   return (
-    <Link to={`/thread/${thread.id}`}>
+    <Link to={`/thread/${thread.id}`} onClick={() => hapticFeedback('selection')}>
       <Card className="hover:shadow-lg hover:scale-[1.005] active:scale-[0.995] transition-all duration-200 cursor-pointer group relative">
         <CardContent className="p-2.5 sm:p-4">
           <div className="flex gap-2.5 sm:gap-3">
