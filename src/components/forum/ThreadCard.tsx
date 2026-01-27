@@ -6,11 +6,13 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { RoleBadge } from '@/components/ui/role-badge';
+import { SwipeableCard } from '@/components/ui/swipeable-card';
 import { useUserRole } from '@/hooks/useUserRoles';
 import { useIsBookmarked, useToggleBookmark } from '@/hooks/useBookmarks';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { hapticFeedback } from '@/hooks/useHapticFeedback';
 import type { Thread } from '@/lib/supabase-types';
 
@@ -24,6 +26,7 @@ export function ThreadCard({ thread, showBookmarkButton = true }: ThreadCardProp
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
   const { data: isBookmarked = false } = useIsBookmarked(thread.id);
   const toggleBookmark = useToggleBookmark();
 
@@ -67,7 +70,33 @@ export function ThreadCard({ thread, showBookmarkButton = true }: ThreadCardProp
     }
   };
 
-  return (
+  const handleSwipeBookmark = async () => {
+    if (!user) {
+      toast({ title: 'Sign in to bookmark threads' });
+      return;
+    }
+    await handleBookmarkClick({ preventDefault: () => {}, stopPropagation: () => {} } as React.MouseEvent);
+  };
+
+  const handleSwipeShare = async () => {
+    hapticFeedback('light');
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: thread.title,
+          url: `${window.location.origin}/thread/${thread.id}`,
+        });
+      } catch {
+        // User cancelled or share failed
+      }
+    } else {
+      // Fallback: copy to clipboard
+      await navigator.clipboard.writeText(`${window.location.origin}/thread/${thread.id}`);
+      toast({ title: 'Link copied to clipboard' });
+    }
+  };
+
+  const cardContent = (
     <Link to={`/thread/${thread.id}`} onClick={() => hapticFeedback('selection')}>
       <Card className="hover:shadow-lg hover:scale-[1.005] active:scale-[0.995] transition-all duration-200 cursor-pointer group relative">
         <CardContent className="p-2.5 sm:p-4">
@@ -136,8 +165,8 @@ export function ThreadCard({ thread, showBookmarkButton = true }: ThreadCardProp
               </div>
             </div>
 
-            {/* Bookmark Button */}
-            {showBookmarkButton && user && (
+            {/* Bookmark Button - only show on desktop */}
+            {showBookmarkButton && user && !isMobile && (
               <Button
                 variant="ghost"
                 size="icon"
@@ -157,4 +186,18 @@ export function ThreadCard({ thread, showBookmarkButton = true }: ThreadCardProp
       </Card>
     </Link>
   );
+
+  // Wrap with swipeable on mobile
+  if (isMobile && user) {
+    return (
+      <SwipeableCard
+        onBookmark={handleSwipeBookmark}
+        onShare={handleSwipeShare}
+      >
+        {cardContent}
+      </SwipeableCard>
+    );
+  }
+
+  return cardContent;
 }
