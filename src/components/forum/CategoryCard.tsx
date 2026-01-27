@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { Category } from '@/lib/supabase-types';
 import { useCategoryThreadCount } from '@/hooks/useCategories';
+import { hapticFeedback } from '@/hooks/useHapticFeedback';
 
 interface CategoryCardProps {
   category: Category;
@@ -14,7 +15,7 @@ export function CategoryCard({ category, showThreadCount = true }: CategoryCardP
   const { data: threadCount = 0 } = useCategoryThreadCount(category.id);
 
   return (
-    <Link to={`/category/${category.slug}`}>
+    <Link to={`/category/${category.slug}`} onClick={() => hapticFeedback('selection')}>
       <Card className="hover:shadow-lg hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 cursor-pointer group">
         <CardContent className="p-3 sm:p-4 flex items-start gap-3 sm:gap-4">
           <div

@@ -1,6 +1,7 @@
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { hapticFeedback } from '@/hooks/useHapticFeedback';
 
 interface FloatingActionButtonProps {
   onClick: () => void;
@@ -15,9 +16,14 @@ export function FloatingActionButton({
 }: FloatingActionButtonProps) {
   if (!show) return null;
 
+  const handleClick = () => {
+    hapticFeedback('medium');
+    onClick();
+  };
+
   return (
     <Button
-      onClick={onClick}
+      onClick={handleClick}
       size="icon"
       className={cn(
         "fixed bottom-20 right-4 z-40 h-14 w-14 rounded-full shadow-lg md:hidden",
@@ -28,6 +34,7 @@ export function FloatingActionButton({
         className
       )}
       aria-label="Create new thread"
+      haptic={false}
     >
       <Plus className="h-6 w-6" />
     </Button>

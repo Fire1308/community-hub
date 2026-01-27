@@ -8,10 +8,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useAuth } from '@/contexts/AuthContext';
 import { useGlobalChat, useBanStatus } from '@/hooks/useGlobalChat';
-import { useTypingIndicator, usePrefetchReactions, REACTION_TYPES } from '@/hooks/useChatFeatures';
+import { useTypingIndicator, usePrefetchReactions } from '@/hooks/useChatFeatures';
 import { formatDistanceToNow } from 'date-fns';
 import { MessageReactions } from './MessageReactions';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { hapticFeedback } from '@/hooks/useHapticFeedback';
 
 const EMOJI_LIST = ['😀', '😂', '😍', '🥰', '😎', '🤔', '👍', '👎', '❤️', '🔥', '💯', '🎉', '🙏', '💪', '✨', '😢', '😮', '🤣', '😊', '🥺', '👀', '💀', '🤝', '👏'];
 
@@ -53,6 +54,30 @@ export function GlobalChat() {
       setShouldScrollToBottom(false);
     }
   }, [messages, isOpen, shouldScrollToBottom, setShouldScrollToBottom]);
+
+  // Close chat when clicking outside
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
+      if (chatRef.current && !chatRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+        hapticFeedback('light');
+      }
+    };
+
+    // Small delay to prevent immediate close on open
+    const timer = setTimeout(() => {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }, 100);
+
+    return () => {
+      clearTimeout(timer);
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [isOpen]);
 
   // Handle dragging
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -190,7 +215,10 @@ export function GlobalChat() {
     >
       {!isOpen ? (
         <Button
-          onClick={() => setIsOpen(true)}
+          onClick={() => {
+            setIsOpen(true);
+            hapticFeedback('medium');
+          }}
           size="lg"
           className="rounded-full h-12 w-12 shadow-lg hover:scale-105 transition-transform bg-gradient-to-br from-primary to-primary/80"
         >
@@ -209,7 +237,15 @@ export function GlobalChat() {
               <MessageCircle className="h-4 w-4 text-primary" />
               Global Chat
             </CardTitle>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setIsOpen(false)}>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-7 w-7" 
+              onClick={() => {
+                setIsOpen(false);
+                hapticFeedback('light');
+              }}
+            >
               <X className="h-4 w-4" />
             </Button>
           </CardHeader>
