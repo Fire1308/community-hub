@@ -11,15 +11,16 @@ import { CreateThreadDialog } from '@/components/forum/CreateThreadDialog';
 import { TrendingTopics } from '@/components/forum/TrendingTopics';
 import { OnlineUsersCard } from '@/components/forum/OnlineUsersCard';
 import { PullToRefresh } from '@/components/ui/pull-to-refresh';
-import { InfiniteScrollLoader } from '@/components/ui/infinite-scroll-loader';
+import { PaginationControls } from '@/components/ui/pagination-controls';
 import { FloatingActionButton } from '@/components/ui/floating-action-button';
-import { ThreadCardSkeleton, CategoryCardSkeleton, SidebarCardSkeleton } from '@/components/ui/skeleton-shimmer';
+import { ThreadCardSkeleton, CategoryCardSkeleton } from '@/components/ui/skeleton-shimmer';
 import { useCategories } from '@/hooks/useCategories';
-import { useInfiniteThreads } from '@/hooks/useInfiniteThreads';
+import { useThreads } from '@/hooks/useThreads';
 import { usePinnedThreads } from '@/hooks/usePinnedThreads';
 import { usePopularTags } from '@/hooks/useTags';
-import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
+
 import { useAuth } from '@/contexts/AuthContext';
+import { useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 
 type ThreadFilter = 'latest' | 'trending' | 'unanswered';
@@ -27,33 +28,35 @@ type ThreadFilter = 'latest' | 'trending' | 'unanswered';
 export default function HomePage() {
   const [filter, setFilter] = useState<ThreadFilter>('latest');
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const queryClient = useQueryClient();
   
   const { user } = useAuth();
   const { data: categories = [], isLoading: categoriesLoading } = useCategories();
   const { data: pinnedThreads = [] } = usePinnedThreads();
+  
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
+  const offset = (currentPage - 1) * pageSize;
+  
   const { 
-    threads, 
-    total: totalThreads, 
+    data: threadsData,
     isLoading: threadsLoading,
-    hasNextPage,
-    isFetchingNextPage,
-    fetchNextPage,
-    refresh,
-  } = useInfiniteThreads({ filter });
+    refetch,
+  } = useThreads({ filter, limit: pageSize, offset });
+  
+  const threads = threadsData?.threads || [];
+  const totalThreads = threadsData?.total || 0;
+  const totalPages = Math.ceil(totalThreads / pageSize);
+  
   const { data: popularTags = [] } = usePopularTags(8);
-
-  const { loadMoreRef } = useInfiniteScroll({
-    hasNextPage: !!hasNextPage,
-    isFetchingNextPage,
-    fetchNextPage,
-  });
 
   // Filter out pinned threads from regular list to avoid duplicates
   const regularThreads = threads.filter(t => !t.is_pinned);
 
   const handleRefresh = useCallback(async () => {
-    await refresh();
-  }, [refresh]);
+    await queryClient.invalidateQueries({ queryKey: ['threads'] });
+    await refetch();
+  }, [queryClient, refetch]);
 
   return (
     <Layout>
@@ -130,11 +133,13 @@ export default function HomePage() {
                     {regularThreads.map(thread => (
                       <ThreadCard key={thread.id} thread={thread} />
                     ))}
-                    <InfiniteScrollLoader
-                      ref={loadMoreRef}
-                      isFetchingNextPage={isFetchingNextPage}
-                      hasNextPage={!!hasNextPage}
-                    />
+                    {totalPages > 1 && (
+                      <PaginationControls
+                        currentPage={currentPage}
+                        totalPages={totalPages}
+                        onPageChange={setCurrentPage}
+                      />
+                    )}
                   </>
                 ) : pinnedThreads.length === 0 ? (
                   <Card>
